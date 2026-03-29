@@ -26,7 +26,6 @@ button{cursor:pointer;}
 .lc h1{font-size:17px;font-weight:700;}.lc .sub{font-size:11px;color:var(--t3);}
 .lc h2{font-size:15px;font-weight:600;margin-bottom:6px;}
 .lc p{color:var(--t3);font-size:12px;line-height:1.7;margin-bottom:16px;}
-.flbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);margin-bottom:4px;display:block;}
 #connectBtn{width:100%;background:var(--teal);color:#fff;border:none;padding:11px;border-radius:var(--r);font-size:13px;font-weight:600;margin-top:10px;}
 #connectBtn:hover{background:var(--teal-h);}
 #lErr{background:var(--rbg);border:1px solid #f5c6c1;border-radius:var(--r);padding:9px;color:var(--red);font-size:11px;margin-top:9px;display:none;}
@@ -309,15 +308,26 @@ const SCOPES  = ['https://analysis.windows.net/powerbi/api/Dataset.Read.All'];
 
 async function getToken() {
   await msalApp.initialize();
-  await msalApp.handleRedirectPromise();
+  // Gère le retour après redirection Microsoft
+  const redirectResult = await msalApp.handleRedirectPromise();
+  if (redirectResult && redirectResult.accessToken) {
+    if (redirectResult.account && redirectResult.account.name) {
+      document.getElementById('userLabel').textContent = redirectResult.account.name.split(' ')[0];
+    }
+    return redirectResult.accessToken;
+  }
+  // Vérifie si un compte est déjà en session
   const accounts = msalApp.getAllAccounts();
   if (accounts.length > 0) {
     try {
       const r = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+      if (accounts[0].name) {
+        document.getElementById('userLabel').textContent = accounts[0].name.split(' ')[0];
+      }
       return r.accessToken;
-    } catch(e) {}
+    } catch(e) { /* token silencieux échoué → redirection */ }
   }
-  // Redirige vers Microsoft au lieu d'ouvrir un popup
+  // Pas de session → redirige vers Microsoft (sans popup)
   await msalApp.loginRedirect({ scopes: SCOPES });
   return null;
 }
@@ -346,19 +356,11 @@ const CP_MAP = { LY:'LY', Budget:'Bud', Forecast:'Fct' };
 const S = {
   token: null, dsId: null,
   allH: [], selH: new Set(),
-  period: 'custom',
-  comp: 'N1', curr: 'EUR',
-  sc: 'OTB', cp: 'LY',
-  msc: 'OTB', mcp: 'LY',
-  allHotelRows: [],
-  allMonthRows: [],
-  allMonthHotelRows: [],
-  monthLoaded: false,
-  allSegmentHotelRows: [],
-  segmentLoaded: false,
-  ssc: 'OTB',
-  scp: 'LY',
-  log: [],
+  period: 'custom', comp: 'N1', curr: 'EUR',
+  sc: 'OTB', cp: 'LY', msc: 'OTB', mcp: 'LY',
+  allHotelRows: [], allMonthRows: [], allMonthHotelRows: [],
+  monthLoaded: false, allSegmentHotelRows: [], segmentLoaded: false,
+  ssc: 'OTB', scp: 'LY', log: [],
 };
 
 /* ══ FORMAT ═════════════════════════════════════════════════════════════════ */
@@ -367,15 +369,9 @@ const sym = () => CSYM[S.curr] || '€';
 
 function fv(v, t) {
   if (v == null || isNaN(v)) return '–';
-  if (t === 'pct') {
-    const p = CFG.occDecimal && Math.abs(v) <= 1.5 ? v*100 : v;
-    return p.toFixed(1) + '%';
-  }
+  if (t === 'pct') { const p = CFG.occDecimal && Math.abs(v) <= 1.5 ? v*100 : v; return p.toFixed(1) + '%'; }
   if (t === 'rev') return sym() + new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(Math.round(v/1000)) + 'K';
-  if (t === 'eur') {
-    if (Math.abs(v) >= 1e6) return sym() + (v/1e6).toFixed(2) + ' M';
-    return sym() + new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(v);
-  }
+  if (t === 'eur') { if (Math.abs(v) >= 1e6) return sym() + (v/1e6).toFixed(2) + ' M'; return sym() + new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(v); }
   if (t === 'int') return new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0}).format(v);
   return String(v);
 }
@@ -401,7 +397,7 @@ function fa(a, b, t) {
 /* ══ API ════════════════════════════════════════════════════════════════════ */
 async function apiG(path) {
   const r = await fetch(CFG.api+path, {headers:{Authorization:'Bearer '+S.token}});
-  if (!r.ok) { const t=await r.text(); if(r.status===401) throw new Error('Token expiré.'); throw new Error('API '+r.status); }
+  if (!r.ok) { if(r.status===401) throw new Error('Token expiré.'); throw new Error('API '+r.status); }
   return r.json();
 }
 
@@ -430,19 +426,14 @@ function nv(row, key) {
   return null;
 }
 
-/* ══ DAX COLUMNS ════════════════════════════════════════════════════════════ */
 function mcols() {
   const kpiCols = Object.entries(CFG.M).map(([k,m]) =>
     `"${k}_OTB",[${m.otb}],"${k}_LY",[${m.ly}],"${k}_Bud",[${m.bud}],"${k}_Fct",[${m.fct}]`
   ).join(',');
-  const helperCols = [
-    '"__AvailableRooms_OTB",[Available Rooms]',
-    '"__AvailableRooms_LY",[Available Rooms N-1]'
-  ].join(',');
+  const helperCols = '"__AvailableRooms_OTB",[Available Rooms],"__AvailableRooms_LY",[Available Rooms N-1]';
   return `${kpiCols},${helperCols}`;
 }
 
-/* ══ DATE FILTER ════════════════════════════════════════════════════════════ */
 function df() {
   const f = document.getElementById('dFrom').value;
   const t = document.getElementById('dTo').value;
@@ -450,626 +441,320 @@ function df() {
   return `KEEPFILTERS(FILTER(ALL(dim_date_serving),dim_date_serving[dateKey]>=${f.replace(/-/g,'')}&&dim_date_serving[dateKey]<=${t.replace(/-/g,'')})),`;
 }
 
-/* ══ CLIENT-SIDE HOTEL FILTER ═══════════════════════════════════════════════ */
 function getFilteredHotelRows() {
   if (S.selH.size === 0) return S.allHotelRows;
-  return S.allHotelRows.filter(row => {
-    const name = getHotelName(row);
-    return S.selH.has(name);
-  });
+  return S.allHotelRows.filter(row => S.selH.has(getHotelName(row)));
 }
 
 function getHotelName(row) {
-  for (const k of Object.keys(row)) {
-    const norm = k.toLowerCase().replace(/[^a-z0-9]/g,'');
-    if (norm.includes('hotelname')) return String(row[k] || '');
-  }
+  for (const k of Object.keys(row)) { if (k.toLowerCase().replace(/[^a-z0-9]/g,'').includes('hotelname')) return String(row[k] || ''); }
   return Object.values(row).find(v => typeof v === 'string') || '';
 }
-
 function getYearMonth(row) {
-  for (const k of Object.keys(row)) {
-    const norm = k.toLowerCase().replace(/[^a-z0-9]/g,'');
-    if (norm.includes('yearmonth')) return String(row[k] || '');
-  }
-  if (row.YearMonth != null) return String(row.YearMonth);
-  return '';
+  for (const k of Object.keys(row)) { if (k.toLowerCase().replace(/[^a-z0-9]/g,'').includes('yearmonth')) return String(row[k] || ''); }
+  return row.YearMonth != null ? String(row.YearMonth) : '';
 }
-
 function getMonthShort(row) {
-  for (const k of Object.keys(row)) {
-    const norm = k.toLowerCase().replace(/[^a-z0-9]/g,'');
-    if (norm.includes('monthnameshort')) return String(row[k] || '');
-  }
-  if (row.MonthNameShort != null) return String(row.MonthNameShort);
-  return '';
+  for (const k of Object.keys(row)) { if (k.toLowerCase().replace(/[^a-z0-9]/g,'').includes('monthnameshort')) return String(row[k] || ''); }
+  return row.MonthNameShort != null ? String(row.MonthNameShort) : '';
 }
-
 function getStatCategory(row) {
-  for (const k of Object.keys(row)) {
-    const norm = k.toLowerCase().replace(/[^a-z0-9]/g,'');
-    if (norm.includes('statcategory')) return String(row[k] || '').trim();
-  }
-  if (row.StatCategory != null) return String(row.StatCategory).trim();
-  return '';
+  for (const k of Object.keys(row)) { if (k.toLowerCase().replace(/[^a-z0-9]/g,'').includes('statcategory')) return String(row[k] || '').trim(); }
+  return row.StatCategory != null ? String(row.StatCategory).trim() : '';
 }
-
-function ymSortValue(v) {
-  const s = String(v || '').replace(/[^0-9]/g,'');
-  return s ? parseInt(s, 10) : Number.MAX_SAFE_INTEGER;
-}
-
+function ymSortValue(v) { const s = String(v||'').replace(/[^0-9]/g,''); return s ? parseInt(s,10) : Number.MAX_SAFE_INTEGER; }
 function monthLabelFromYM(ym) {
-  const s = String(ym || '').replace(/[^0-9]/g,'');
-  if (s.length < 6) return String(ym || '–');
-  const y = Number(s.slice(0,4));
-  const m = Number(s.slice(4,6));
-  if (!y || !m || m < 1 || m > 12) return String(ym || '–');
-  return new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month:'short', year:'numeric' });
+  const s = String(ym||'').replace(/[^0-9]/g,'');
+  if (s.length < 6) return String(ym||'–');
+  const y = Number(s.slice(0,4)), m = Number(s.slice(4,6));
+  if (!y||!m||m<1||m>12) return String(ym||'–');
+  return new Date(y,m-1,1).toLocaleDateString('fr-FR',{month:'short',year:'numeric'});
 }
 
-/* ══ COMPUTE SUMMARY ════════════════════════════════════════════════════════ */
-function occToDecimal(v) {
-  if (v == null || isNaN(v)) return null;
-  const n = parseFloat(v);
-  return Math.abs(n) > 1.5 ? n / 100 : n;
-}
-
+function occToDecimal(v) { if (v==null||isNaN(v)) return null; const n=parseFloat(v); return Math.abs(n)>1.5?n/100:n; }
 function deriveAvailableRooms(row, sfx) {
-  const explicit = nv(row, `__AvailableRooms_${sfx}`);
-  if (explicit != null && explicit > 0) return explicit;
-  const rs = nv(row, `RoomSold_${sfx}`);
-  const occ = occToDecimal(nv(row, `Occ_${sfx}`));
-  if (rs != null && occ != null && occ > 0) return rs / occ;
-  const rev = nv(row, `Revenue_${sfx}`);
-  const revpar = nv(row, `RevPAR_${sfx}`);
-  if (rev != null && revpar != null && revpar !== 0) return rev / revpar;
+  const explicit = nv(row,`__AvailableRooms_${sfx}`);
+  if (explicit!=null&&explicit>0) return explicit;
+  const rs=nv(row,`RoomSold_${sfx}`), occ=occToDecimal(nv(row,`Occ_${sfx}`));
+  if (rs!=null&&occ!=null&&occ>0) return rs/occ;
+  const rev=nv(row,`Revenue_${sfx}`), revpar=nv(row,`RevPAR_${sfx}`);
+  if (rev!=null&&revpar!=null&&revpar!==0) return rev/revpar;
   return null;
 }
 
 function computeSummary(rows) {
   const out = {};
   ['OTB','LY','Bud','Fct'].forEach(sfx => {
-    const sumRS = rows.reduce((a,r) => a + (nv(r, `RoomSold_${sfx}`) || 0), 0);
-    const sumRev = rows.reduce((a,r) => a + (nv(r, `Revenue_${sfx}`) || 0), 0);
-    const sumAvail = rows.reduce((a,r) => a + (deriveAvailableRooms(r, sfx) || 0), 0);
-    out[`RoomSold_${sfx}`] = sumRS || null;
-    out[`Revenue_${sfx}`] = sumRev || null;
-    out[`ADR_${sfx}`] = sumRS > 0 ? sumRev / sumRS : null;
-    out[`Occ_${sfx}`] = sumAvail > 0 ? sumRS / sumAvail : null;
-    out[`RevPAR_${sfx}`] = sumAvail > 0 ? sumRev / sumAvail : null;
+    const sumRS=rows.reduce((a,r)=>a+(nv(r,`RoomSold_${sfx}`)||0),0);
+    const sumRev=rows.reduce((a,r)=>a+(nv(r,`Revenue_${sfx}`)||0),0);
+    const sumAvail=rows.reduce((a,r)=>a+(deriveAvailableRooms(r,sfx)||0),0);
+    out[`RoomSold_${sfx}`]=sumRS||null; out[`Revenue_${sfx}`]=sumRev||null;
+    out[`ADR_${sfx}`]=sumRS>0?sumRev/sumRS:null;
+    out[`Occ_${sfx}`]=sumAvail>0?sumRS/sumAvail:null;
+    out[`RevPAR_${sfx}`]=sumAvail>0?sumRev/sumAvail:null;
   });
   return out;
 }
 
-/* ══ LOAD ═══════════════════════════════════════════════════════════════════ */
 async function loadAll() {
   if (!S.dsId) return;
-  // Renouvelle le token silencieusement si nécessaire
-  try { S.token = await getToken(); } catch(e) {}
-  S.comp = document.getElementById('compSel').value;
-  S.curr = document.getElementById('currSel').value;
-  loading(true);
-  showErr('');
+  try { S.token = await getToken(); if (!S.token) return; } catch(e) {}
+  S.comp=document.getElementById('compSel').value; S.curr=document.getElementById('currSel').value;
+  loading(true); showErr('');
   try {
-    const D = df();
-    const qHtl = `EVALUATE SUMMARIZECOLUMNS(
-      dim_hotel[${CFG.hotelCol}],
-      ${D}
-      KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),
-      ${mcols()}
-    ) ORDER BY dim_hotel[${CFG.hotelCol}] ASC`;
-
-    S.allHotelRows = await dax(qHtl);
-    S.allMonthRows = [];
-    S.allMonthHotelRows = [];
-    S.monthLoaded  = false;
-    S.allSegmentHotelRows = [];
-    S.segmentLoaded = false;
-
+    const D=df();
+    S.allHotelRows = await dax(`EVALUATE SUMMARIZECOLUMNS(dim_hotel[${CFG.hotelCol}],${D}KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),${mcols()}) ORDER BY dim_hotel[${CFG.hotelCol}] ASC`);
+    S.allMonthRows=[]; S.allMonthHotelRows=[]; S.monthLoaded=false; S.allSegmentHotelRows=[]; S.segmentLoaded=false;
     renderAll();
-
-    const monthlyActive = document.getElementById('page-monthly')?.classList.contains('active');
-    if (monthlyActive) { await loadMonthly(); renderMonthlyView(); }
-
-    const segmentsActive = document.getElementById('page-segments')?.classList.contains('active');
-    if (segmentsActive) { await loadSegments(); renderSegmentsView(); }
-
-    const now = new Date().toLocaleTimeString('fr-FR');
-    document.getElementById('lupd').textContent = 'Mis à jour '+now;
-    const lbl = document.getElementById('dFrom').value+' → '+document.getElementById('dTo').value;
-    document.getElementById('plbl').textContent  = lbl;
-    document.getElementById('plbl2').textContent = lbl;
-    document.getElementById('plbl3').textContent = lbl;
+    if (document.getElementById('page-monthly')?.classList.contains('active')) { await loadMonthly(); renderMonthlyView(); }
+    if (document.getElementById('page-segments')?.classList.contains('active')) { await loadSegments(); renderSegmentsView(); }
+    const now=new Date().toLocaleTimeString('fr-FR');
+    document.getElementById('lupd').textContent='Mis à jour '+now;
+    const lbl=document.getElementById('dFrom').value+' → '+document.getElementById('dTo').value;
+    ['plbl','plbl2','plbl3'].forEach(id=>document.getElementById(id).textContent=lbl);
     logDI('Rechargé — '+now+` (${S.allHotelRows.length} hôtels)`);
-  } catch(e) {
-    showErr(e.message); logDI('⚠️ '+e.message);
-  } finally {
-    loading(false);
-  }
+  } catch(e) { showErr(e.message); logDI('⚠️ '+e.message); } finally { loading(false); }
 }
 
 async function loadMonthly() {
-  if (!S.dsId || S.monthLoaded) return;
-  loading(true);
+  if (!S.dsId||S.monthLoaded) return; loading(true);
   try {
-    const D = df();
-    const qMth = `EVALUATE SUMMARIZECOLUMNS(
-      dim_date_serving[YearMonth],
-      dim_date_serving[MonthNameShort],
-      dim_hotel[${CFG.hotelCol}],
-      ${D}
-      KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),
-      ${mcols()}
-    ) ORDER BY dim_date_serving[YearMonth] ASC, dim_hotel[${CFG.hotelCol}] ASC`;
-    S.allMonthHotelRows = await dax(qMth);
-    S.allMonthRows = [];
-    S.monthLoaded  = true;
-    logDI('Vue mensuelle chargée — '+S.allMonthHotelRows.length+' lignes mois × hôtel');
-  } catch(e) {
-    showErr(e.message);
-  } finally {
-    loading(false);
-  }
+    const D=df();
+    S.allMonthHotelRows = await dax(`EVALUATE SUMMARIZECOLUMNS(dim_date_serving[YearMonth],dim_date_serving[MonthNameShort],dim_hotel[${CFG.hotelCol}],${D}KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),${mcols()}) ORDER BY dim_date_serving[YearMonth] ASC, dim_hotel[${CFG.hotelCol}] ASC`);
+    S.allMonthRows=[]; S.monthLoaded=true;
+    logDI('Vue mensuelle chargée — '+S.allMonthHotelRows.length+' lignes');
+  } catch(e) { showErr(e.message); } finally { loading(false); }
 }
 
 async function loadSegments() {
-  if (!S.dsId || S.segmentLoaded) return;
-  loading(true);
+  if (!S.dsId||S.segmentLoaded) return; loading(true);
   try {
-    const D = df();
-    const qSeg = `EVALUATE SUMMARIZECOLUMNS(
-      dim_statclass[StatCategory],
-      dim_hotel[${CFG.hotelCol}],
-      ${D}
-      KEEPFILTERS(FILTER(ALL(dim_statclass),NOT ISBLANK(dim_statclass[StatCategory])&&dim_statclass[StatCategory]<>"")),
-      KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),
-      ${mcols()}
-    ) ORDER BY dim_statclass[StatCategory] ASC, dim_hotel[${CFG.hotelCol}] ASC`;
-    S.allSegmentHotelRows = await dax(qSeg);
-    S.segmentLoaded = true;
-    logDI('Segments chargés — '+S.allSegmentHotelRows.length+' lignes segment × hôtel');
-  } catch(e) {
-    showErr(e.message);
-  } finally {
-    loading(false);
-  }
+    const D=df();
+    S.allSegmentHotelRows = await dax(`EVALUATE SUMMARIZECOLUMNS(dim_statclass[StatCategory],dim_hotel[${CFG.hotelCol}],${D}KEEPFILTERS(FILTER(ALL(dim_statclass),NOT ISBLANK(dim_statclass[StatCategory])&&dim_statclass[StatCategory]<>"")),KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),${mcols()}) ORDER BY dim_statclass[StatCategory] ASC, dim_hotel[${CFG.hotelCol}] ASC`);
+    S.segmentLoaded=true;
+    logDI('Segments chargés — '+S.allSegmentHotelRows.length+' lignes');
+  } catch(e) { showErr(e.message); } finally { loading(false); }
 }
 
-/* ══ RENDER ═════════════════════════════════════════════════════════════════ */
 function renderAll() {
-  const filtered = getFilteredHotelRows();
-  const summary  = computeSummary(filtered);
-  renderKPIs('kgrid', summary, S.comp);
-  renderTable('htbl', filtered, getHotelName, S.sc, S.cp);
+  const filtered=getFilteredHotelRows(), summary=computeSummary(filtered);
+  renderKPIs('kgrid',summary,S.comp); renderTable('htbl',filtered,getHotelName,S.sc,S.cp);
 }
-
 function renderMonthlyView() {
-  let monthRowsSource = S.allMonthHotelRows || [];
-  if (S.selH.size > 0) {
-    monthRowsSource = monthRowsSource.filter(row => S.selH.has(getHotelName(row)));
-  }
-  const rows = aggregateByMonth(monthRowsSource);
-  const summary = computeSummary(getFilteredHotelRows());
-  renderKPIs('kgrid2', summary, S.comp);
-  renderTable('mtbl', rows, getMonthName, S.msc, S.mcp);
+  let src=S.allMonthHotelRows||[];
+  if (S.selH.size>0) src=src.filter(r=>S.selH.has(getHotelName(r)));
+  renderKPIs('kgrid2',computeSummary(getFilteredHotelRows()),S.comp);
+  renderTable('mtbl',aggregateByMonth(src),getMonthName,S.msc,S.mcp);
 }
-
 function renderSegmentsView() {
-  let segmentRowsSource = S.allSegmentHotelRows || [];
-  if (S.selH.size > 0) {
-    segmentRowsSource = segmentRowsSource.filter(row => S.selH.has(getHotelName(row)));
-  }
-  const rows = aggregateByStatCategory(segmentRowsSource, S.ssc);
-  const summary = computeSummary(getFilteredHotelRows());
-  renderKPIs('kgrid3', summary, S.comp);
-  renderTable('stbl', rows, getSegmentName, S.ssc, S.scp, ['RoomSold','ADR','Revenue']);
+  let src=S.allSegmentHotelRows||[];
+  if (S.selH.size>0) src=src.filter(r=>S.selH.has(getHotelName(r)));
+  renderKPIs('kgrid3',computeSummary(getFilteredHotelRows()),S.comp);
+  renderTable('stbl',aggregateByStatCategory(src,S.ssc),getSegmentName,S.ssc,S.scp,['RoomSold','ADR','Revenue']);
 }
 
-function aggregateByMonth(monthHotelRows) {
-  const map = new Map();
-  monthHotelRows.forEach(row => {
-    const ym = getYearMonth(row);
-    const mn = getMonthShort(row);
-    if (!ym) return;
-    if (!map.has(ym)) {
-      const base = { YearMonth: ym, MonthNameShort: mn };
-      Object.keys(CFG.M).forEach(k => {
-        ['OTB','LY','Bud','Fct'].forEach(sfx => { base[`${k}_${sfx}`] = null; });
-      });
-      ['OTB','LY','Bud','Fct'].forEach(sfx => { base[`__AvailableRooms_${sfx}`] = 0; });
-      map.set(ym, base);
-    }
-    const agg = map.get(ym);
-    if (!agg.MonthNameShort && mn) agg.MonthNameShort = mn;
-    ['OTB','LY','Bud','Fct'].forEach(sfx => {
-      const rs = nv(row, `RoomSold_${sfx}`);
-      const rev = nv(row, `Revenue_${sfx}`);
-      const avail = deriveAvailableRooms(row, sfx);
-      if (rs != null) agg[`RoomSold_${sfx}`] = (agg[`RoomSold_${sfx}`] || 0) + rs;
-      if (rev != null) agg[`Revenue_${sfx}`] = (agg[`Revenue_${sfx}`] || 0) + rev;
-      if (avail != null && avail > 0) agg[`__AvailableRooms_${sfx}`] += avail;
+function aggregateByMonth(src) {
+  const map=new Map();
+  src.forEach(row=>{
+    const ym=getYearMonth(row), mn=getMonthShort(row); if (!ym) return;
+    if (!map.has(ym)) { const b={YearMonth:ym,MonthNameShort:mn}; Object.keys(CFG.M).forEach(k=>['OTB','LY','Bud','Fct'].forEach(s=>{b[`${k}_${s}`]=null;})); ['OTB','LY','Bud','Fct'].forEach(s=>{b[`__AvailableRooms_${s}`]=0;}); map.set(ym,b); }
+    const agg=map.get(ym); if (!agg.MonthNameShort&&mn) agg.MonthNameShort=mn;
+    ['OTB','LY','Bud','Fct'].forEach(sfx=>{
+      const rs=nv(row,`RoomSold_${sfx}`),rev=nv(row,`Revenue_${sfx}`),avail=deriveAvailableRooms(row,sfx);
+      if (rs!=null) agg[`RoomSold_${sfx}`]=(agg[`RoomSold_${sfx}`]||0)+rs;
+      if (rev!=null) agg[`Revenue_${sfx}`]=(agg[`Revenue_${sfx}`]||0)+rev;
+      if (avail!=null&&avail>0) agg[`__AvailableRooms_${sfx}`]+=avail;
     });
   });
-  const rows = Array.from(map.values()).sort((a,b) => ymSortValue(a.YearMonth) - ymSortValue(b.YearMonth));
-  rows.forEach(r => {
-    ['OTB','LY','Bud','Fct'].forEach(sfx => {
-      const rs = r[`RoomSold_${sfx}`];
-      const rev = r[`Revenue_${sfx}`];
-      const avail = r[`__AvailableRooms_${sfx}`];
-      r[`ADR_${sfx}`] = (rs && rs !== 0 && rev != null) ? rev / rs : null;
-      r[`Occ_${sfx}`] = (avail && avail > 0 && rs != null) ? rs / avail : null;
-      r[`RevPAR_${sfx}`] = (avail && avail > 0 && rev != null) ? rev / avail : null;
-    });
-  });
+  const rows=Array.from(map.values()).sort((a,b)=>ymSortValue(a.YearMonth)-ymSortValue(b.YearMonth));
+  rows.forEach(r=>['OTB','LY','Bud','Fct'].forEach(sfx=>{
+    const rs=r[`RoomSold_${sfx}`],rev=r[`Revenue_${sfx}`],avail=r[`__AvailableRooms_${sfx}`];
+    r[`ADR_${sfx}`]=(rs&&rs!==0&&rev!=null)?rev/rs:null;
+    r[`Occ_${sfx}`]=(avail&&avail>0&&rs!=null)?rs/avail:null;
+    r[`RevPAR_${sfx}`]=(avail&&avail>0&&rev!=null)?rev/avail:null;
+  }));
   return rows;
 }
 
-function aggregateByStatCategory(segmentHotelRows, scenario) {
-  const map = new Map();
-  segmentHotelRows.forEach(row => {
-    const seg = getStatCategory(row) || 'Non renseigné';
-    if (!map.has(seg)) {
-      const base = { StatCategory: seg };
-      Object.keys(CFG.M).forEach(k => {
-        ['OTB','LY','Bud','Fct'].forEach(sfx => { base[`${k}_${sfx}`] = null; });
-      });
-      ['OTB','LY','Bud','Fct'].forEach(sfx => { base[`__AvailableRooms_${sfx}`] = 0; });
-      map.set(seg, base);
-    }
-    const agg = map.get(seg);
-    ['OTB','LY','Bud','Fct'].forEach(sfx => {
-      const rs = nv(row, `RoomSold_${sfx}`);
-      const rev = nv(row, `Revenue_${sfx}`);
-      const avail = deriveAvailableRooms(row, sfx);
-      if (rs != null) agg[`RoomSold_${sfx}`] = (agg[`RoomSold_${sfx}`] || 0) + rs;
-      if (rev != null) agg[`Revenue_${sfx}`] = (agg[`Revenue_${sfx}`] || 0) + rev;
-      if (avail != null && avail > 0) agg[`__AvailableRooms_${sfx}`] += avail;
+function aggregateByStatCategory(src, scenario) {
+  const map=new Map();
+  src.forEach(row=>{
+    const seg=getStatCategory(row)||'Non renseigné';
+    if (!map.has(seg)) { const b={StatCategory:seg}; Object.keys(CFG.M).forEach(k=>['OTB','LY','Bud','Fct'].forEach(s=>{b[`${k}_${s}`]=null;})); ['OTB','LY','Bud','Fct'].forEach(s=>{b[`__AvailableRooms_${s}`]=0;}); map.set(seg,b); }
+    const agg=map.get(seg);
+    ['OTB','LY','Bud','Fct'].forEach(sfx=>{
+      const rs=nv(row,`RoomSold_${sfx}`),rev=nv(row,`Revenue_${sfx}`),avail=deriveAvailableRooms(row,sfx);
+      if (rs!=null) agg[`RoomSold_${sfx}`]=(agg[`RoomSold_${sfx}`]||0)+rs;
+      if (rev!=null) agg[`Revenue_${sfx}`]=(agg[`Revenue_${sfx}`]||0)+rev;
+      if (avail!=null&&avail>0) agg[`__AvailableRooms_${sfx}`]+=avail;
     });
   });
-  const rows = Array.from(map.values());
-  rows.forEach(r => {
-    ['OTB','LY','Bud','Fct'].forEach(sfx => {
-      const rs = r[`RoomSold_${sfx}`];
-      const rev = r[`Revenue_${sfx}`];
-      const avail = r[`__AvailableRooms_${sfx}`];
-      r[`ADR_${sfx}`] = (rs && rs !== 0 && rev != null) ? rev / rs : null;
-      r[`Occ_${sfx}`] = (avail && avail > 0 && rs != null) ? rs / avail : null;
-      r[`RevPAR_${sfx}`] = (avail && avail > 0 && rev != null) ? rev / avail : null;
-    });
-  });
-  const scKey = SC_MAP[scenario] || 'OTB';
-  rows.sort((a,b) => (nv(b, `RoomSold_${scKey}`) || 0) - (nv(a, `RoomSold_${scKey}`) || 0) || getSegmentName(a).localeCompare(getSegmentName(b), 'fr', {sensitivity:'base'}));
+  const rows=Array.from(map.values());
+  rows.forEach(r=>['OTB','LY','Bud','Fct'].forEach(sfx=>{
+    const rs=r[`RoomSold_${sfx}`],rev=r[`Revenue_${sfx}`],avail=r[`__AvailableRooms_${sfx}`];
+    r[`ADR_${sfx}`]=(rs&&rs!==0&&rev!=null)?rev/rs:null;
+    r[`Occ_${sfx}`]=(avail&&avail>0&&rs!=null)?rs/avail:null;
+    r[`RevPAR_${sfx}`]=(avail&&avail>0&&rev!=null)?rev/avail:null;
+  }));
+  const scKey=SC_MAP[scenario]||'OTB';
+  rows.sort((a,b)=>(nv(b,`RoomSold_${scKey}`)||0)-(nv(a,`RoomSold_${scKey}`)||0)||getSegmentName(a).localeCompare(getSegmentName(b),'fr',{sensitivity:'base'}));
   return rows;
 }
 
-function getSegmentName(row) {
-  return getStatCategory(row) || row.StatCategory || 'Non renseigné';
+function getSegmentName(row) { return getStatCategory(row)||row.StatCategory||'Non renseigné'; }
+function getMonthName(row) {
+  const ym=getYearMonth(row), mn=getMonthShort(row);
+  if (mn&&ym) return `${mn} ${String(ym).substring(0,4)}`;
+  return ym ? monthLabelFromYM(ym) : '–';
 }
 
-/* ══ RENDER KPIs ════════════════════════════════════════════════════════════ */
 function renderKPIs(gridId, summary, comp) {
-  const ck = comp==='N1'?'LY':comp==='Budget'?'Bud':'Fct';
-  const cl = comp==='N1'?'STLY':comp==='Budget'?'Budget':'Adj Forecast';
-  document.getElementById(gridId).innerHTML = Object.entries(CFG.M).map(([k,m]) => {
-    const otb=summary[`${k}_OTB`], ly=summary[`${k}_LY`], bud=summary[`${k}_Bud`], fct=summary[`${k}_Fct`];
-    const ref = {LY:ly,Bud:bud,Fct:fct}[ck];
-    const bd  = fp(otb,ref,m.t);
-    const rows = [
-      ['vs STLY',          otb,ly],
-      ['vs Adj Forecast',  otb,fct],
-      ['vs Budget',        otb,bud],
-      ['Adj Fct vs Budget',fct,bud],
-      ['Adj Fct vs STLY',  fct,ly],
-    ].map(([l,a,b]) => {
-      const d = fp(a,b,m.t);
-      return `<div class="krow"><span class="klbl">${l}</span>
-        <div class="kvals"><span class="kref">${fv(b,m.t)}</span>
-        <span class="kd ${d.c}">${d.s}</span></div></div>`;
-    }).join('');
-    return `<div class="kcard ${bd.c}">
-      <div class="kn">${m.lbl}</div>
-      <div class="km"><span class="kv">${fv(otb,m.t)}</span>
-        <span class="kbdg ${bd.c}">${bd.s} ${cl}</span></div>
-      <div class="kdiv"></div><div class="kcomps">${rows}</div></div>`;
+  const ck=comp==='N1'?'LY':comp==='Budget'?'Bud':'Fct';
+  const cl=comp==='N1'?'STLY':comp==='Budget'?'Budget':'Adj Forecast';
+  document.getElementById(gridId).innerHTML=Object.entries(CFG.M).map(([k,m])=>{
+    const otb=summary[`${k}_OTB`],ly=summary[`${k}_LY`],bud=summary[`${k}_Bud`],fct=summary[`${k}_Fct`];
+    const ref={LY:ly,Bud:bud,Fct:fct}[ck], bd=fp(otb,ref,m.t);
+    const rows=[['vs STLY',otb,ly],['vs Adj Forecast',otb,fct],['vs Budget',otb,bud],['Adj Fct vs Budget',fct,bud],['Adj Fct vs STLY',fct,ly]]
+      .map(([l,a,b])=>{const d=fp(a,b,m.t);return `<div class="krow"><span class="klbl">${l}</span><div class="kvals"><span class="kref">${fv(b,m.t)}</span><span class="kd ${d.c}">${d.s}</span></div></div>`;}).join('');
+    return `<div class="kcard ${bd.c}"><div class="kn">${m.lbl}</div><div class="km"><span class="kv">${fv(otb,m.t)}</span><span class="kbdg ${bd.c}">${bd.s} ${cl}</span></div><div class="kdiv"></div><div class="kcomps">${rows}</div></div>`;
   }).join('');
 }
 
-/* ══ RENDER TABLE ═══════════════════════════════════════════════════════════ */
 function renderTable(tblId, rows, nameFn, sc, cp, includeKeys=null) {
-  const tbl   = document.getElementById(tblId);
-  const scKey = SC_MAP[sc] || 'OTB';
-  const cpKey = CP_MAP[cp] || 'LY';
-  const scLbl = sc==='LY'?'STLY':sc==='Forecast'?'Adj Fct':sc;
-  const cpLbl = cp==='LY'?'STLY':cp==='Forecast'?'Adj Fct':cp;
-  const kpis  = Object.entries(CFG.M).filter(([k]) => !includeKeys || includeKeys.includes(k));
-
-  if (!rows.length) {
-    const colspan = 1 + (kpis.length * 3);
-    tbl.innerHTML = `<tbody><tr><td colspan="${colspan}" style="padding:22px;text-align:center;color:var(--t3)">Aucune donnée</td></tr></tbody>`;
-    return;
-  }
-
-  let h1 = `<th class="h0">&nbsp;</th>`;
-  kpis.forEach(([k,m]) => { h1 += `<th class="hkpi" colspan="3">${m.lbl}</th>`; });
-
-  let h2 = `<th class="h0"></th>`;
-  kpis.forEach(([k,m]) => {
-    const pLbl = m.t==='pct' ? `VS ${cpLbl} pts` : `VS ${cpLbl} %`;
-    h2 += `<th class="hv">${scLbl}</th><th class="he">VS ${cpLbl}</th><th class="he">${pLbl}</th>`;
-  });
-
-  const tot = computeSummary(rows);
-
-  const mkRow = (name, data, isTot) => {
-    let cells = `<td class="c0">${name}</td>`;
-    kpis.forEach(([k,m]) => {
-      const val = isTot ? data[`${k}_${scKey}`] : nv(data,`${k}_${scKey}`);
-      const ref = isTot ? data[`${k}_${cpKey}`] : nv(data,`${k}_${cpKey}`);
-      const dv  = fa(val,ref,m.t);
-      const dp  = fp(val,ref,m.t);
-      cells += `<td class="cv">${fv(val,m.t)}</td>`;
-      cells += `<td class="ce ${dv.c}">${dv.s}</td>`;
-      cells += `<td class="ce ${dp.c}">${dp.s}</td>`;
+  const tbl=document.getElementById(tblId);
+  const scKey=SC_MAP[sc]||'OTB', cpKey=CP_MAP[cp]||'LY';
+  const scLbl=sc==='LY'?'STLY':sc==='Forecast'?'Adj Fct':sc;
+  const cpLbl=cp==='LY'?'STLY':cp==='Forecast'?'Adj Fct':cp;
+  const kpis=Object.entries(CFG.M).filter(([k])=>!includeKeys||includeKeys.includes(k));
+  if (!rows.length) { tbl.innerHTML=`<tbody><tr><td colspan="${1+(kpis.length*3)}" style="padding:22px;text-align:center;color:var(--t3)">Aucune donnée</td></tr></tbody>`; return; }
+  let h1=`<th class="h0">&nbsp;</th>`;
+  kpis.forEach(([k,m])=>{h1+=`<th class="hkpi" colspan="3">${m.lbl}</th>`;});
+  let h2=`<th class="h0"></th>`;
+  kpis.forEach(([k,m])=>{const pLbl=m.t==='pct'?`VS ${cpLbl} pts`:`VS ${cpLbl} %`; h2+=`<th class="hv">${scLbl}</th><th class="he">VS ${cpLbl}</th><th class="he">${pLbl}</th>`;});
+  const tot=computeSummary(rows);
+  const mkRow=(name,data,isTot)=>{
+    let cells=`<td class="c0">${name}</td>`;
+    kpis.forEach(([k,m])=>{
+      const val=isTot?data[`${k}_${scKey}`]:nv(data,`${k}_${scKey}`);
+      const ref=isTot?data[`${k}_${cpKey}`]:nv(data,`${k}_${cpKey}`);
+      const dv=fa(val,ref,m.t), dp=fp(val,ref,m.t);
+      cells+=`<td class="cv">${fv(val,m.t)}</td><td class="ce ${dv.c}">${dv.s}</td><td class="ce ${dp.c}">${dp.s}</td>`;
     });
     return `<tr class="${isTot?'trow':''}">${cells}</tr>`;
   };
-
-  const body = rows.map(r => mkRow(nameFn(r),r,false)).join('');
-  tbl.innerHTML = `<thead><tr class="r-grp">${h1}</tr><tr class="r-sub">${h2}</tr></thead>
-    <tbody>${body}${mkRow('TOTAL',tot,true)}</tbody>`;
+  tbl.innerHTML=`<thead><tr class="r-grp">${h1}</tr><tr class="r-sub">${h2}</tr></thead><tbody>${rows.map(r=>mkRow(nameFn(r),r,false)).join('')}${mkRow('TOTAL',tot,true)}</tbody>`;
 }
 
-function getMonthName(row) {
-  const ym = getYearMonth(row);
-  const mn = getMonthShort(row);
-  if (mn && ym) return `${mn} ${String(ym).substring(0,4)}`;
-  if (ym) return monthLabelFromYM(ym);
-  return '–';
-}
-
-/* ══ PERIOD ═════════════════════════════════════════════════════════════════ */
-function dStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-
+function dStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function setPeriod(type) {
-  S.period = type;
-  ['YTD','TTM','Custom'].forEach(p => document.getElementById('pb'+p).classList.toggle('active',p.toLowerCase()===type));
-  const cd = document.getElementById('cdates');
-  cd.style.opacity       = type==='custom'?'1':'.45';
-  cd.style.pointerEvents = type==='custom'?'':'none';
+  S.period=type;
+  ['YTD','TTM','Custom'].forEach(p=>document.getElementById('pb'+p).classList.toggle('active',p.toLowerCase()===type));
+  const cd=document.getElementById('cdates');
+  cd.style.opacity=type==='custom'?'1':'.45'; cd.style.pointerEvents=type==='custom'?'':'none';
   if (type!=='custom') {
-    const n=new Date(), y=n.getFullYear(), m=n.getMonth();
-    const p = type==='ytd'
-      ? {f:`${y}-01-01`, t:dStr(new Date(y,m,0))}
-      : {f:dStr(new Date(y-1,m,1)), t:dStr(new Date(y,m,0))};
-    document.getElementById('dFrom').value = p.f;
-    document.getElementById('dTo').value   = p.t;
+    const n=new Date(),y=n.getFullYear(),m=n.getMonth();
+    const p=type==='ytd'?{f:`${y}-01-01`,t:dStr(new Date(y,m,0))}:{f:dStr(new Date(y-1,m,1)),t:dStr(new Date(y,m,0))};
+    document.getElementById('dFrom').value=p.f; document.getElementById('dTo').value=p.t;
   }
   loadAll();
 }
 
-/* ══ HOTEL PICKER ═══════════════════════════════════════════════════════════ */
-function buildHL(hotels) { S.allH = hotels; renderHL(hotels); }
-
+function buildHL(hotels){S.allH=hotels;renderHL(hotels);}
 function renderHL(hotels) {
-  const list = document.getElementById('hdl');
-  list.innerHTML = hotels.map(h => {
-    const chk = S.selH.size===0||S.selH.has(h) ? 'checked' : '';
-    const id  = 'cb_'+h.replace(/\W/g,'_');
+  const list=document.getElementById('hdl');
+  list.innerHTML=hotels.map(h=>{
+    const chk=S.selH.size===0||S.selH.has(h)?'checked':'', id='cb_'+h.replace(/\W/g,'_');
     return `<div class="hdi"><input type="checkbox" id="${id}" value="${h}" ${chk}><label for="${id}">${h}</label></div>`;
   }).join('');
-  list.querySelectorAll('input[type=checkbox]').forEach(cb => {
-    cb.addEventListener('change', () => {
+  list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change',()=>{
       if (cb.checked) S.selH.add(cb.value); else S.selH.delete(cb.value);
-      if ([...document.querySelectorAll('#hdl input:checked')].length === S.allH.length) S.selH = new Set();
-      updateHBtn();
-      renderAll();
-      if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
-      if (document.getElementById('page-segments').classList.contains('active') && S.segmentLoaded) renderSegmentsView();
+      if ([...document.querySelectorAll('#hdl input:checked')].length===S.allH.length) S.selH=new Set();
+      updateHBtn(); renderAll();
+      if (document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded) renderMonthlyView();
+      if (document.getElementById('page-segments').classList.contains('active')&&S.segmentLoaded) renderSegmentsView();
     });
   });
 }
-
-function filterHL() {
-  const q = document.getElementById('hsrch').value.toLowerCase();
-  renderHL(S.allH.filter(h => h.toLowerCase().includes(q)));
-}
-
-function updateHBtn() {
-  const n = S.selH.size;
-  document.getElementById('hbtntxt').textContent =
-    n===0 ? 'Tous les hôtels' : n===1 ? [...S.selH][0].substring(0,26) : `${n} hôtels`;
-}
-
-/* ══ TABS ═══════════════════════════════════════════════════════════════════ */
-function showPage(name) {
-  ['overview','monthly','segments','integrity'].forEach(p => {
-    document.getElementById('page-'+p).classList.toggle('active',p===name);
-    document.getElementById('tab-'+p).classList.toggle('active',p===name);
-  });
-}
-
-/* ══ UI HELPERS ═════════════════════════════════════════════════════════════ */
-function loading(on) {
-  document.getElementById('loadBar').classList.toggle('show',on);
-  document.getElementById('btnRefresh').textContent = on ? '…' : '↻ Actualiser';
-}
-function showErr(msg) {
-  const el = document.getElementById('errb');
-  el.textContent  = msg ? '⚠️ '+msg : '';
-  el.style.display = msg ? 'block' : 'none';
-}
-function logDI(msg) {
-  S.log.unshift(`[${new Date().toLocaleTimeString('fr-FR')}] ${msg}`);
-  if (S.log.length > 20) S.log.pop();
-  const el = document.getElementById('dilog');
-  if (el) el.innerHTML = S.log.join('<br>');
-}
-function renderDI() {
-  const f=document.getElementById('dFrom').value, t=document.getElementById('dTo').value;
-  document.getElementById('digrid').innerHTML = [
-    {t:'Statut',      v:S.token?'🟢 Connecté':'🔴',   s:CFG.dataset},
-    {t:'Hôtels',      v:S.allH.length||'–',            s:S.selH.size===0?'Tous':S.selH.size+' sélectionnés'},
-    {t:'Période',     v:f&&t?`${f} → ${t}`:'–',        s:S.period.toUpperCase()},
-    {t:'Dataset',     v:CFG.dataset,                    s:CFG.workspace},
-    {t:'Devise',      v:S.curr,                         s:'Conversion non active'},
-    {t:'Dernière MAJ',v:document.getElementById('lupd').textContent||'–', s:''},
+function filterHL(){const q=document.getElementById('hsrch').value.toLowerCase(); renderHL(S.allH.filter(h=>h.toLowerCase().includes(q)));}
+function updateHBtn(){const n=S.selH.size; document.getElementById('hbtntxt').textContent=n===0?'Tous les hôtels':n===1?[...S.selH][0].substring(0,26):`${n} hôtels`;}
+function showPage(name){['overview','monthly','segments','integrity'].forEach(p=>{document.getElementById('page-'+p).classList.toggle('active',p===name);document.getElementById('tab-'+p).classList.toggle('active',p===name);});}
+function loading(on){document.getElementById('loadBar').classList.toggle('show',on);document.getElementById('btnRefresh').textContent=on?'…':'↻ Actualiser';}
+function showErr(msg){const el=document.getElementById('errb');el.textContent=msg?'⚠️ '+msg:'';el.style.display=msg?'block':'none';}
+function logDI(msg){S.log.unshift(`[${new Date().toLocaleTimeString('fr-FR')}] ${msg}`);if(S.log.length>20)S.log.pop();const el=document.getElementById('dilog');if(el)el.innerHTML=S.log.join('<br>');}
+function renderDI(){
+  const f=document.getElementById('dFrom').value,t=document.getElementById('dTo').value;
+  document.getElementById('digrid').innerHTML=[
+    {t:'Statut',v:S.token?'🟢 Connecté':'🔴',s:CFG.dataset},
+    {t:'Hôtels',v:S.allH.length||'–',s:S.selH.size===0?'Tous':S.selH.size+' sélectionnés'},
+    {t:'Période',v:f&&t?`${f} → ${t}`:'–',s:S.period.toUpperCase()},
+    {t:'Dataset',v:CFG.dataset,s:CFG.workspace},
+    {t:'Devise',v:S.curr,s:'Conversion non active'},
+    {t:'Dernière MAJ',v:document.getElementById('lupd').textContent||'–',s:''},
   ].map(c=>`<div class="dic"><div class="dic-t">${c.t}</div><div class="dic-v">${c.v}</div><div class="dic-s">${c.s}</div></div>`).join('');
 }
 
-/* ══ CONNECTION ═════════════════════════════════════════════════════════════ */
 async function connect() {
   loading(true);
   try {
     S.token = await getToken();
-    const g  = await apiG('/groups');
-    const ws = g.value.find(x => x.name===CFG.workspace);
+    if (!S.token) return; // loginRedirect en cours
+    const g=await apiG('/groups');
+    const ws=g.value.find(x=>x.name===CFG.workspace);
     if (!ws) throw new Error(`Workspace "${CFG.workspace}" introuvable.`);
-    const ds = (await apiG(`/groups/${ws.id}/datasets`)).value.find(x => x.name===CFG.dataset);
+    const ds=(await apiG(`/groups/${ws.id}/datasets`)).value.find(x=>x.name===CFG.dataset);
     if (!ds) throw new Error(`Dataset "${CFG.dataset}" introuvable.`);
-    S.dsId = ds.id;
+    S.dsId=ds.id;
     logDI('Connecté — '+CFG.workspace);
-    const hr = await dax(`EVALUATE SELECTCOLUMNS(SUMMARIZE(dim_hotel,dim_hotel[${CFG.hotelCol}]),"H",dim_hotel[${CFG.hotelCol}])`);
+    const hr=await dax(`EVALUATE SELECTCOLUMNS(SUMMARIZE(dim_hotel,dim_hotel[${CFG.hotelCol}]),"H",dim_hotel[${CFG.hotelCol}])`);
     buildHL(hr.map(r=>r['[H]']).filter(Boolean).sort());
     logDI(S.allH.length+' hôtels chargés');
-    const y = new Date().getFullYear();
-    document.getElementById('dFrom').value = `${y}-01-01`;
-    document.getElementById('dTo').value   = `${y}-12-31`;
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
+    const y=new Date().getFullYear();
+    document.getElementById('dFrom').value=`${y}-01-01`;
+    document.getElementById('dTo').value=`${y}-12-31`;
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='flex';
     await loadAll();
-  } catch(e) {
-    loading(false);
-    lErr(e.message);
-    S.token=null;
-    S.dsId=null;
-  }
+  } catch(e) { loading(false); lErr(e.message); S.token=null; S.dsId=null; }
 }
+function lErr(m){const e=document.getElementById('lErr');e.textContent='⚠️ '+m;e.style.display='block';}
 
-function lErr(m) { const e=document.getElementById('lErr'); e.textContent='⚠️ '+m; e.style.display='block'; }
-
-/* ══ INIT ═══════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-
   document.getElementById('connectBtn').addEventListener('click', connect);
+  connect(); // connexion automatique au chargement
 
-  // Connexion automatique au chargement
-  connect();
+  document.getElementById('tab-overview').addEventListener('click',()=>showPage('overview'));
+  document.getElementById('tab-monthly').addEventListener('click',async()=>{showPage('monthly');if(!S.monthLoaded)await loadMonthly();renderMonthlyView();});
+  document.getElementById('tab-segments').addEventListener('click',async()=>{showPage('segments');if(!S.segmentLoaded)await loadSegments();renderSegmentsView();});
+  document.getElementById('tab-integrity').addEventListener('click',()=>{showPage('integrity');renderDI();});
 
-  // Onglets
-  document.getElementById('tab-overview').addEventListener('click', () => showPage('overview'));
-  document.getElementById('tab-monthly').addEventListener('click', async () => {
-    showPage('monthly');
-    if (!S.monthLoaded) await loadMonthly();
-    renderMonthlyView();
+  ['OTB','Forecast','Budget','LY'].forEach(v=>{
+    document.getElementById('sc-'+v).addEventListener('click',()=>{S.sc=v;['OTB','Forecast','Budget','LY'].forEach(x=>document.getElementById('sc-'+x).classList.toggle('active',x===v));renderTable('htbl',getFilteredHotelRows(),getHotelName,S.sc,S.cp);});
+    document.getElementById('msc-'+v).addEventListener('click',()=>{S.msc=v;['OTB','Forecast','Budget','LY'].forEach(x=>document.getElementById('msc-'+x).classList.toggle('active',x===v));renderMonthlyView();});
+    document.getElementById('ssc-'+v).addEventListener('click',()=>{S.ssc=v;['OTB','Forecast','Budget','LY'].forEach(x=>document.getElementById('ssc-'+x).classList.toggle('active',x===v));renderSegmentsView();});
   });
-  document.getElementById('tab-segments').addEventListener('click', async () => {
-    showPage('segments');
-    if (!S.segmentLoaded) await loadSegments();
-    renderSegmentsView();
-  });
-  document.getElementById('tab-integrity').addEventListener('click', () => { showPage('integrity'); renderDI(); });
-
-  // Scénario / comparaison vue d'ensemble
-  ['OTB','Forecast','Budget','LY'].forEach(v => {
-    document.getElementById('sc-'+v).addEventListener('click', () => {
-      S.sc = v;
-      ['OTB','Forecast','Budget','LY'].forEach(x => document.getElementById('sc-'+x).classList.toggle('active',x===v));
-      renderTable('htbl', getFilteredHotelRows(), getHotelName, S.sc, S.cp);
-    });
-  });
-  ['LY','Budget','Forecast'].forEach(v => {
-    document.getElementById('cp-'+v).addEventListener('click', () => {
-      S.cp = v;
-      ['LY','Budget','Forecast'].forEach(x => document.getElementById('cp-'+x).classList.toggle('active',x===v));
-      renderTable('htbl', getFilteredHotelRows(), getHotelName, S.sc, S.cp);
-    });
+  ['LY','Budget','Forecast'].forEach(v=>{
+    document.getElementById('cp-'+v).addEventListener('click',()=>{S.cp=v;['LY','Budget','Forecast'].forEach(x=>document.getElementById('cp-'+x).classList.toggle('active',x===v));renderTable('htbl',getFilteredHotelRows(),getHotelName,S.sc,S.cp);});
+    document.getElementById('mcp-'+v).addEventListener('click',()=>{S.mcp=v;['LY','Budget','Forecast'].forEach(x=>document.getElementById('mcp-'+x).classList.toggle('active',x===v));renderMonthlyView();});
+    document.getElementById('scp-'+v).addEventListener('click',()=>{S.scp=v;['LY','Budget','Forecast'].forEach(x=>document.getElementById('scp-'+x).classList.toggle('active',x===v));renderSegmentsView();});
   });
 
-  // Scénario / comparaison vue mensuelle
-  ['OTB','Forecast','Budget','LY'].forEach(v => {
-    document.getElementById('msc-'+v).addEventListener('click', () => {
-      S.msc = v;
-      ['OTB','Forecast','Budget','LY'].forEach(x => document.getElementById('msc-'+x).classList.toggle('active',x===v));
-      renderMonthlyView();
-    });
-  });
-  ['LY','Budget','Forecast'].forEach(v => {
-    document.getElementById('mcp-'+v).addEventListener('click', () => {
-      S.mcp = v;
-      ['LY','Budget','Forecast'].forEach(x => document.getElementById('mcp-'+x).classList.toggle('active',x===v));
-      renderMonthlyView();
-    });
-  });
+  document.getElementById('pbYTD').addEventListener('click',()=>setPeriod('ytd'));
+  document.getElementById('pbTTM').addEventListener('click',()=>setPeriod('ttm'));
+  document.getElementById('pbCustom').addEventListener('click',()=>setPeriod('custom'));
 
-  // Scénario / comparaison vue segments
-  ['OTB','Forecast','Budget','LY'].forEach(v => {
-    document.getElementById('ssc-'+v).addEventListener('click', () => {
-      S.ssc = v;
-      ['OTB','Forecast','Budget','LY'].forEach(x => document.getElementById('ssc-'+x).classList.toggle('active',x===v));
-      renderSegmentsView();
-    });
-  });
-  ['LY','Budget','Forecast'].forEach(v => {
-    document.getElementById('scp-'+v).addEventListener('click', () => {
-      S.scp = v;
-      ['LY','Budget','Forecast'].forEach(x => document.getElementById('scp-'+x).classList.toggle('active',x===v));
-      renderSegmentsView();
-    });
-  });
+  let dtimer=null;
+  ['dFrom','dTo'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{clearTimeout(dtimer);dtimer=setTimeout(loadAll,1000);}));
 
-  // Période
-  document.getElementById('pbYTD').addEventListener('click',    () => setPeriod('ytd'));
-  document.getElementById('pbTTM').addEventListener('click',    () => setPeriod('ttm'));
-  document.getElementById('pbCustom').addEventListener('click', () => setPeriod('custom'));
+  document.getElementById('compSel').addEventListener('change',()=>{S.comp=document.getElementById('compSel').value;renderAll();if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded)renderMonthlyView();});
+  document.getElementById('currSel').addEventListener('change',()=>{S.curr=document.getElementById('currSel').value;renderAll();if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded)renderMonthlyView();});
+  document.getElementById('btnRefresh').addEventListener('click',loadAll);
 
-  // Dates (debounce 1s)
-  let dtimer = null;
-  ['dFrom','dTo'].forEach(id => {
-    document.getElementById(id).addEventListener('change', () => {
-      clearTimeout(dtimer);
-      dtimer = setTimeout(loadAll, 1000);
-    });
-  });
-
-  // Comparaison / devise
-  document.getElementById('compSel').addEventListener('change', () => {
-    S.comp = document.getElementById('compSel').value;
-    renderAll();
-    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
-  });
-  document.getElementById('currSel').addEventListener('change', () => {
-    S.curr = document.getElementById('currSel').value;
-    renderAll();
-    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
-  });
-
-  document.getElementById('btnRefresh').addEventListener('click', loadAll);
-
-  // Hotel picker
-  document.getElementById('hotelBtn').addEventListener('click', e => {
-    e.stopPropagation();
-    document.getElementById('hdd').classList.toggle('open');
-  });
-  document.addEventListener('click', e => {
-    if (!document.getElementById('hwrap').contains(e.target))
-      document.getElementById('hdd').classList.remove('open');
-  });
-  document.getElementById('hsrch').addEventListener('input', filterHL);
-  document.getElementById('selAll').addEventListener('click', () => {
-    S.selH = new Set();
-    renderHL(S.allH);
-    updateHBtn();
-    renderAll();
-    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
-  });
-  document.getElementById('clrAll').addEventListener('click', () => {
-    S.selH = new Set();
-    document.querySelectorAll('#hdl input').forEach(cb => { cb.checked=false; });
-    updateHBtn();
-    renderAll();
-    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
-  });
+  document.getElementById('hotelBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('hdd').classList.toggle('open');});
+  document.addEventListener('click',e=>{if(!document.getElementById('hwrap').contains(e.target))document.getElementById('hdd').classList.remove('open');});
+  document.getElementById('hsrch').addEventListener('input',filterHL);
+  document.getElementById('selAll').addEventListener('click',()=>{S.selH=new Set();renderHL(S.allH);updateHBtn();renderAll();if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded)renderMonthlyView();});
+  document.getElementById('clrAll').addEventListener('click',()=>{S.selH=new Set();document.querySelectorAll('#hdl input').forEach(cb=>{cb.checked=false;});updateHBtn();renderAll();if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded)renderMonthlyView();});
 });
 </script>
 </body>
