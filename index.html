@@ -309,6 +309,7 @@ const SCOPES  = ['https://analysis.windows.net/powerbi/api/Dataset.Read.All'];
 
 async function getToken() {
   await msalApp.initialize();
+  await msalApp.handleRedirectPromise();
   const accounts = msalApp.getAllAccounts();
   if (accounts.length > 0) {
     try {
@@ -316,12 +317,9 @@ async function getToken() {
       return r.accessToken;
     } catch(e) {}
   }
-  const r = await msalApp.loginPopup({ scopes: SCOPES });
-  // Affiche le prénom de l'utilisateur connecté
-  if (r.account && r.account.name) {
-    document.getElementById('userLabel').textContent = r.account.name.split(' ')[0];
-  }
-  return r.accessToken;
+  // Redirige vers Microsoft au lieu d'ouvrir un popup
+  await msalApp.loginRedirect({ scopes: SCOPES });
+  return null;
 }
 
 /* ══ CONFIG ══════════════════════════════════════════════════════════════════ */
