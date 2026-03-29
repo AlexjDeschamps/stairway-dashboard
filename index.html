@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Stairway Management Dashboard</title>
+<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js"></script>
 <style>
 :root{
   --teal:#7A9E96;--teal-h:#698f87;--teal-pale:#eaf2f1;--teal-light:#b8d0cc;
@@ -25,12 +26,7 @@ button{cursor:pointer;}
 .lc h1{font-size:17px;font-weight:700;}.lc .sub{font-size:11px;color:var(--t3);}
 .lc h2{font-size:15px;font-weight:600;margin-bottom:6px;}
 .lc p{color:var(--t3);font-size:12px;line-height:1.7;margin-bottom:16px;}
-.steps{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:13px 15px;margin-bottom:16px;font-size:11px;line-height:2.1;color:var(--t2);}
-.steps b{color:var(--text);}
 .flbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--t3);margin-bottom:4px;display:block;}
-textarea#tok{width:100%;height:75px;border:1px solid var(--border);border-radius:var(--r);padding:9px;font-size:10px;font-family:monospace;resize:vertical;color:var(--text);background:var(--bg);}
-textarea#tok:focus{outline:none;border-color:var(--teal);}
-.hint{font-size:10px;color:var(--t3);margin-top:4px;}
 #connectBtn{width:100%;background:var(--teal);color:#fff;border:none;padding:11px;border-radius:var(--r);font-size:13px;font-weight:600;margin-top:10px;}
 #connectBtn:hover{background:var(--teal-h);}
 #lErr{background:var(--rbg);border:1px solid #f5c6c1;border-radius:var(--r);padding:9px;color:var(--red);font-size:11px;margin-top:9px;display:none;}
@@ -151,18 +147,9 @@ table.ht tbody tr:last-child td{border-bottom:none;}
       <div class="lc-icon">📊</div>
       <div><h1>Stairway Management</h1><span class="sub">Portfolio Performance Dashboard</span></div>
     </div>
-    <h2>Connexion au modèle sémantique</h2>
-    <p>Collez votre token Bearer pour accéder à votre modèle Power BI / Fabric.</p>
-    <div class="steps"><b>Obtenir le token :</b><br>
-      1. Ouvrez un rapport dans <b>app.fabric.microsoft.com</b><br>
-      2. <b>F12</b> → Network → filtre <b>analysis.windows.net</b><br>
-      3. Cliquez sur une requête <b>artifacts</b> → Headers<br>
-      4. Copiez la valeur après <b>Authorization: Bearer</b>
-    </div>
-    <label class="flbl">Token Bearer</label>
-    <textarea id="tok" placeholder="eyJ0eXAiOiJKV1QiLCJhbGci..."></textarea>
-    <div class="hint">⚠️ Token valide ~1h</div>
-    <button id="connectBtn">Se connecter</button>
+    <h2>Connexion Microsoft</h2>
+    <p>Connectez-vous avec votre compte Microsoft pour accéder au dashboard.</p>
+    <button id="connectBtn">Se connecter avec Microsoft</button>
     <div id="lErr"></div>
   </div>
 </div>
@@ -180,7 +167,7 @@ table.ht tbody tr:last-child td{border-bottom:none;}
     </div>
     <div class="tnav-right">
       <span id="lupd" style="font-size:10px;color:var(--t3)"></span>
-      <div class="spill"><div class="sdot ok"></div><span>Connecté</span></div>
+      <div class="spill"><div class="sdot ok"></div><span id="userLabel">Connecté</span></div>
     </div>
   </nav>
 
@@ -308,6 +295,35 @@ table.ht tbody tr:last-child td{border-bottom:none;}
 </div>
 
 <script>
+/* ══ MSAL AUTH ══════════════════════════════════════════════════════════════ */
+const MSAL_CFG = {
+  auth: {
+    clientId:    '11294ce5-453d-4438-8f1a-ed8f0f3b5a38',
+    authority:   'https://login.microsoftonline.com/a4057b76-5c8b-403a-9241-c0089c8d629f',
+    redirectUri: 'https://calm-grass-0365f1d10.1.azurestaticapps.net',
+  },
+  cache: { cacheLocation: 'sessionStorage' }
+};
+const msalApp = new msal.PublicClientApplication(MSAL_CFG);
+const SCOPES  = ['https://analysis.windows.net/powerbi/api/Dataset.Read.All'];
+
+async function getToken() {
+  await msalApp.initialize();
+  const accounts = msalApp.getAllAccounts();
+  if (accounts.length > 0) {
+    try {
+      const r = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
+      return r.accessToken;
+    } catch(e) {}
+  }
+  const r = await msalApp.loginPopup({ scopes: SCOPES });
+  // Affiche le prénom de l'utilisateur connecté
+  if (r.account && r.account.name) {
+    document.getElementById('userLabel').textContent = r.account.name.split(' ')[0];
+  }
+  return r.accessToken;
+}
+
 /* ══ CONFIG ══════════════════════════════════════════════════════════════════ */
 const CFG = {
   workspace:  'BI Revenue Management',
@@ -418,22 +434,17 @@ function nv(row, key) {
 
 /* ══ DAX COLUMNS ════════════════════════════════════════════════════════════ */
 function mcols() {
-  // Charge les 4 scénarios × 5 KPIs + helper measures pour Available Rooms
   const kpiCols = Object.entries(CFG.M).map(([k,m]) =>
     `"${k}_OTB",[${m.otb}],"${k}_LY",[${m.ly}],"${k}_Bud",[${m.bud}],"${k}_Fct",[${m.fct}]`
   ).join(',');
-
   const helperCols = [
     '"__AvailableRooms_OTB",[Available Rooms]',
     '"__AvailableRooms_LY",[Available Rooms N-1]'
   ].join(',');
-
   return `${kpiCols},${helperCols}`;
 }
 
-/* ══ DATE FILTER ONLY ═══════════════════════════════════════════════════════ */
-// IMPORTANT : pas de filtre hôtel dans les requêtes DAX
-// Le filtre hôtel s'applique côté client sur allHotelRows
+/* ══ DATE FILTER ════════════════════════════════════════════════════════════ */
 function df() {
   const f = document.getElementById('dFrom').value;
   const t = document.getElementById('dTo').value;
@@ -442,7 +453,6 @@ function df() {
 }
 
 /* ══ CLIENT-SIDE HOTEL FILTER ═══════════════════════════════════════════════ */
-// Filtre instantané côté JS — aucune requête réseau
 function getFilteredHotelRows() {
   if (S.selH.size === 0) return S.allHotelRows;
   return S.allHotelRows.filter(row => {
@@ -500,8 +510,7 @@ function monthLabelFromYM(ym) {
   return new Date(y, m - 1, 1).toLocaleDateString('fr-FR', { month:'short', year:'numeric' });
 }
 
-/* ══ COMPUTE SUMMARY FROM ROWS ══════════════════════════════════════════════ */
-// Calcule les KPIs agrégés depuis les données hôtel déjà filtrées
+/* ══ COMPUTE SUMMARY ════════════════════════════════════════════════════════ */
 function occToDecimal(v) {
   if (v == null || isNaN(v)) return null;
   const n = parseFloat(v);
@@ -511,16 +520,12 @@ function occToDecimal(v) {
 function deriveAvailableRooms(row, sfx) {
   const explicit = nv(row, `__AvailableRooms_${sfx}`);
   if (explicit != null && explicit > 0) return explicit;
-
-  // Fallback prudent seulement si la mesure explicite n'existe pas
   const rs = nv(row, `RoomSold_${sfx}`);
   const occ = occToDecimal(nv(row, `Occ_${sfx}`));
   if (rs != null && occ != null && occ > 0) return rs / occ;
-
   const rev = nv(row, `Revenue_${sfx}`);
   const revpar = nv(row, `RevPAR_${sfx}`);
   if (rev != null && revpar != null && revpar !== 0) return rev / revpar;
-
   return null;
 }
 
@@ -530,7 +535,6 @@ function computeSummary(rows) {
     const sumRS = rows.reduce((a,r) => a + (nv(r, `RoomSold_${sfx}`) || 0), 0);
     const sumRev = rows.reduce((a,r) => a + (nv(r, `Revenue_${sfx}`) || 0), 0);
     const sumAvail = rows.reduce((a,r) => a + (deriveAvailableRooms(r, sfx) || 0), 0);
-
     out[`RoomSold_${sfx}`] = sumRS || null;
     out[`Revenue_${sfx}`] = sumRev || null;
     out[`ADR_${sfx}`] = sumRS > 0 ? sumRev / sumRS : null;
@@ -540,15 +544,17 @@ function computeSummary(rows) {
   return out;
 }
 
-/* ══ LOAD — UNE SEULE REQUÊTE, PAS DE FILTRE HÔTEL ════════════════════════ */
+/* ══ LOAD ═══════════════════════════════════════════════════════════════════ */
 async function loadAll() {
   if (!S.dsId) return;
+  // Renouvelle le token silencieusement si nécessaire
+  try { S.token = await getToken(); } catch(e) {}
   S.comp = document.getElementById('compSel').value;
   S.curr = document.getElementById('currSel').value;
   loading(true);
   showErr('');
   try {
-    const D = df(); // date filter only — NO hotel filter
+    const D = df();
     const qHtl = `EVALUATE SUMMARIZECOLUMNS(
       dim_hotel[${CFG.hotelCol}],
       ${D}
@@ -566,16 +572,10 @@ async function loadAll() {
     renderAll();
 
     const monthlyActive = document.getElementById('page-monthly')?.classList.contains('active');
-    if (monthlyActive) {
-      await loadMonthly();
-      renderMonthlyView();
-    }
+    if (monthlyActive) { await loadMonthly(); renderMonthlyView(); }
 
     const segmentsActive = document.getElementById('page-segments')?.classList.contains('active');
-    if (segmentsActive) {
-      await loadSegments();
-      renderSegmentsView();
-    }
+    if (segmentsActive) { await loadSegments(); renderSegmentsView(); }
 
     const now = new Date().toLocaleTimeString('fr-FR');
     document.getElementById('lupd').textContent = 'Mis à jour '+now;
@@ -591,7 +591,6 @@ async function loadAll() {
   }
 }
 
-// Charge les données mensuelles à la demande (Vue Mensuelle)
 async function loadMonthly() {
   if (!S.dsId || S.monthLoaded) return;
   loading(true);
@@ -615,7 +614,6 @@ async function loadMonthly() {
     loading(false);
   }
 }
-
 
 async function loadSegments() {
   if (!S.dsId || S.segmentLoaded) return;
@@ -641,7 +639,6 @@ async function loadSegments() {
 }
 
 /* ══ RENDER ═════════════════════════════════════════════════════════════════ */
-// Rendu instantané — filtre hôtel appliqué ici côté JS
 function renderAll() {
   const filtered = getFilteredHotelRows();
   const summary  = computeSummary(filtered);
@@ -651,11 +648,9 @@ function renderAll() {
 
 function renderMonthlyView() {
   let monthRowsSource = S.allMonthHotelRows || [];
-
   if (S.selH.size > 0) {
     monthRowsSource = monthRowsSource.filter(row => S.selH.has(getHotelName(row)));
   }
-
   const rows = aggregateByMonth(monthRowsSource);
   const summary = computeSummary(getFilteredHotelRows());
   renderKPIs('kgrid2', summary, S.comp);
@@ -664,11 +659,9 @@ function renderMonthlyView() {
 
 function renderSegmentsView() {
   let segmentRowsSource = S.allSegmentHotelRows || [];
-
   if (S.selH.size > 0) {
     segmentRowsSource = segmentRowsSource.filter(row => S.selH.has(getHotelName(row)));
   }
-
   const rows = aggregateByStatCategory(segmentRowsSource, S.ssc);
   const summary = computeSummary(getFilteredHotelRows());
   renderKPIs('kgrid3', summary, S.comp);
@@ -677,108 +670,78 @@ function renderSegmentsView() {
 
 function aggregateByMonth(monthHotelRows) {
   const map = new Map();
-
   monthHotelRows.forEach(row => {
     const ym = getYearMonth(row);
     const mn = getMonthShort(row);
     if (!ym) return;
-
     if (!map.has(ym)) {
       const base = { YearMonth: ym, MonthNameShort: mn };
       Object.keys(CFG.M).forEach(k => {
-        ['OTB','LY','Bud','Fct'].forEach(sfx => {
-          base[`${k}_${sfx}`] = null;
-        });
+        ['OTB','LY','Bud','Fct'].forEach(sfx => { base[`${k}_${sfx}`] = null; });
       });
-      ['OTB','LY','Bud','Fct'].forEach(sfx => {
-        base[`__AvailableRooms_${sfx}`] = 0;
-      });
+      ['OTB','LY','Bud','Fct'].forEach(sfx => { base[`__AvailableRooms_${sfx}`] = 0; });
       map.set(ym, base);
     }
-
     const agg = map.get(ym);
     if (!agg.MonthNameShort && mn) agg.MonthNameShort = mn;
-
     ['OTB','LY','Bud','Fct'].forEach(sfx => {
       const rs = nv(row, `RoomSold_${sfx}`);
       const rev = nv(row, `Revenue_${sfx}`);
       const avail = deriveAvailableRooms(row, sfx);
-
       if (rs != null) agg[`RoomSold_${sfx}`] = (agg[`RoomSold_${sfx}`] || 0) + rs;
       if (rev != null) agg[`Revenue_${sfx}`] = (agg[`Revenue_${sfx}`] || 0) + rev;
       if (avail != null && avail > 0) agg[`__AvailableRooms_${sfx}`] += avail;
     });
   });
-
   const rows = Array.from(map.values()).sort((a,b) => ymSortValue(a.YearMonth) - ymSortValue(b.YearMonth));
-
   rows.forEach(r => {
     ['OTB','LY','Bud','Fct'].forEach(sfx => {
       const rs = r[`RoomSold_${sfx}`];
       const rev = r[`Revenue_${sfx}`];
       const avail = r[`__AvailableRooms_${sfx}`];
-
       r[`ADR_${sfx}`] = (rs && rs !== 0 && rev != null) ? rev / rs : null;
       r[`Occ_${sfx}`] = (avail && avail > 0 && rs != null) ? rs / avail : null;
       r[`RevPAR_${sfx}`] = (avail && avail > 0 && rev != null) ? rev / avail : null;
-
-      // on garde __AvailableRooms_* pour que le TOTAL mensuel soit recalculé correctement
     });
   });
-
   return rows;
 }
 
-
 function aggregateByStatCategory(segmentHotelRows, scenario) {
   const map = new Map();
-
   segmentHotelRows.forEach(row => {
     const seg = getStatCategory(row) || 'Non renseigné';
-
     if (!map.has(seg)) {
       const base = { StatCategory: seg };
       Object.keys(CFG.M).forEach(k => {
-        ['OTB','LY','Bud','Fct'].forEach(sfx => {
-          base[`${k}_${sfx}`] = null;
-        });
+        ['OTB','LY','Bud','Fct'].forEach(sfx => { base[`${k}_${sfx}`] = null; });
       });
-      ['OTB','LY','Bud','Fct'].forEach(sfx => {
-        base[`__AvailableRooms_${sfx}`] = 0;
-      });
+      ['OTB','LY','Bud','Fct'].forEach(sfx => { base[`__AvailableRooms_${sfx}`] = 0; });
       map.set(seg, base);
     }
-
     const agg = map.get(seg);
-
     ['OTB','LY','Bud','Fct'].forEach(sfx => {
       const rs = nv(row, `RoomSold_${sfx}`);
       const rev = nv(row, `Revenue_${sfx}`);
       const avail = deriveAvailableRooms(row, sfx);
-
       if (rs != null) agg[`RoomSold_${sfx}`] = (agg[`RoomSold_${sfx}`] || 0) + rs;
       if (rev != null) agg[`Revenue_${sfx}`] = (agg[`Revenue_${sfx}`] || 0) + rev;
       if (avail != null && avail > 0) agg[`__AvailableRooms_${sfx}`] += avail;
     });
   });
-
   const rows = Array.from(map.values());
-
   rows.forEach(r => {
     ['OTB','LY','Bud','Fct'].forEach(sfx => {
       const rs = r[`RoomSold_${sfx}`];
       const rev = r[`Revenue_${sfx}`];
       const avail = r[`__AvailableRooms_${sfx}`];
-
       r[`ADR_${sfx}`] = (rs && rs !== 0 && rev != null) ? rev / rs : null;
       r[`Occ_${sfx}`] = (avail && avail > 0 && rs != null) ? rs / avail : null;
       r[`RevPAR_${sfx}`] = (avail && avail > 0 && rev != null) ? rev / avail : null;
     });
   });
-
   const scKey = SC_MAP[scenario] || 'OTB';
   rows.sort((a,b) => (nv(b, `RoomSold_${scKey}`) || 0) - (nv(a, `RoomSold_${scKey}`) || 0) || getSegmentName(a).localeCompare(getSegmentName(b), 'fr', {sensitivity:'base'}));
-
   return rows;
 }
 
@@ -838,7 +801,6 @@ function renderTable(tblId, rows, nameFn, sc, cp, includeKeys=null) {
     h2 += `<th class="hv">${scLbl}</th><th class="he">VS ${cpLbl}</th><th class="he">${pLbl}</th>`;
   });
 
-  // Totaux calculés côté client
   const tot = computeSummary(rows);
 
   const mkRow = (name, data, isTot) => {
@@ -904,12 +866,8 @@ function renderHL(hotels) {
       if ([...document.querySelectorAll('#hdl input:checked')].length === S.allH.length) S.selH = new Set();
       updateHBtn();
       renderAll();
-      if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) {
-        renderMonthlyView();
-      }
-      if (document.getElementById('page-segments').classList.contains('active') && S.segmentLoaded) {
-        renderSegmentsView();
-      }
+      if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
+      if (document.getElementById('page-segments').classList.contains('active') && S.segmentLoaded) renderSegmentsView();
     });
   });
 }
@@ -963,11 +921,9 @@ function renderDI() {
 
 /* ══ CONNECTION ═════════════════════════════════════════════════════════════ */
 async function connect() {
-  const t = document.getElementById('tok').value.trim().replace(/^Bearer\s+/i,'');
-  if (t.length < 50) { lErr('Token invalide.'); return; }
-  S.token = t;
   loading(true);
   try {
+    S.token = await getToken();
     const g  = await apiG('/groups');
     const ws = g.value.find(x => x.name===CFG.workspace);
     if (!ws) throw new Error(`Workspace "${CFG.workspace}" introuvable.`);
@@ -984,14 +940,23 @@ async function connect() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     await loadAll();
-  } catch(e) { loading(false); lErr(e.message); S.token=null; S.dsId=null; }
+  } catch(e) {
+    loading(false);
+    lErr(e.message);
+    S.token=null;
+    S.dsId=null;
+  }
 }
+
 function lErr(m) { const e=document.getElementById('lErr'); e.textContent='⚠️ '+m; e.style.display='block'; }
 
 /* ══ INIT ═══════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('connectBtn').addEventListener('click', connect);
+
+  // Connexion automatique au chargement
+  connect();
 
   // Onglets
   document.getElementById('tab-overview').addEventListener('click', () => showPage('overview'));
@@ -1007,7 +972,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('tab-integrity').addEventListener('click', () => { showPage('integrity'); renderDI(); });
 
-  // Scénario / comparaison vue d'ensemble — instantané
+  // Scénario / comparaison vue d'ensemble
   ['OTB','Forecast','Budget','LY'].forEach(v => {
     document.getElementById('sc-'+v).addEventListener('click', () => {
       S.sc = v;
@@ -1023,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Scénario / comparaison vue mensuelle — instantané
+  // Scénario / comparaison vue mensuelle
   ['OTB','Forecast','Budget','LY'].forEach(v => {
     document.getElementById('msc-'+v).addEventListener('click', () => {
       S.msc = v;
@@ -1039,6 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Scénario / comparaison vue segments
   ['OTB','Forecast','Budget','LY'].forEach(v => {
     document.getElementById('ssc-'+v).addEventListener('click', () => {
       S.ssc = v;
@@ -1068,20 +1034,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Comparaison / devise — re-render instantané sans requête
+  // Comparaison / devise
   document.getElementById('compSel').addEventListener('change', () => {
     S.comp = document.getElementById('compSel').value;
     renderAll();
-    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) {
-      renderMonthlyView();
-    }
+    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
   });
   document.getElementById('currSel').addEventListener('change', () => {
     S.curr = document.getElementById('currSel').value;
     renderAll();
-    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) {
-      renderMonthlyView();
-    }
+    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
   });
 
   document.getElementById('btnRefresh').addEventListener('click', loadAll);
@@ -1101,18 +1063,14 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHL(S.allH);
     updateHBtn();
     renderAll();
-    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) {
-      renderMonthlyView();
-    }
+    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
   });
   document.getElementById('clrAll').addEventListener('click', () => {
     S.selH = new Set();
     document.querySelectorAll('#hdl input').forEach(cb => { cb.checked=false; });
     updateHBtn();
     renderAll();
-    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) {
-      renderMonthlyView();
-    }
+    if (document.getElementById('page-monthly').classList.contains('active') && S.monthLoaded) renderMonthlyView();
   });
 });
 </script>
