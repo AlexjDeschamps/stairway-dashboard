@@ -12,6 +12,7 @@
   --white:#fff;--bg:#f7f8f8;--border:#e2e8e7;
   --text:#1e2d2b;--t2:#4a5e5c;--t3:#7a9190;
   --green:#2d7d5f;--gbg:#eaf5ef;--red:#c0392b;--rbg:#fdf0ee;
+  --orange:#c47a1e;--obg:#fef6ea;
   --sh0:0 1px 4px rgba(0,0,0,.06);--sh1:0 4px 16px rgba(0,0,0,.08);
   --r:6px;--r2:10px;
 }
@@ -101,12 +102,17 @@ button{cursor:pointer;}
 .kd.pos{color:var(--green);}
 .kd.neg{color:var(--red);}
 .kd.neu{color:var(--t3);}
+.kd.pkp{color:var(--orange);}
 .tctrl{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
 .tgrp{display:flex;align-items:center;gap:2px;}
 .tgl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);margin-right:3px;white-space:nowrap;}
 .tbtn{padding:3px 9px;border:1px solid var(--border);background:var(--bg);color:var(--t3);font-size:11px;border-radius:var(--r);}
 .tbtn:hover{border-color:var(--teal);color:var(--teal);}
 .tbtn.active{background:var(--teal);color:#fff;border-color:var(--teal);}
+/* Bouton pickup orange */
+.tbtn.pkp-btn{border-color:var(--orange);color:var(--orange);}
+.tbtn.pkp-btn:hover{background:var(--obg);}
+.tbtn.pkp-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
 .tsep{width:1px;height:18px;background:var(--border);margin:0 5px;}
 .twrap{background:var(--white);border:1px solid var(--border);border-radius:var(--r2);box-shadow:var(--sh0);overflow:hidden;}
 .tscroll{overflow-x:auto;}
@@ -115,17 +121,22 @@ table.ht th,table.ht td{white-space:nowrap;border-bottom:1px solid var(--border)
 table.ht tr.r-grp th{background:var(--bg);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--t3);text-align:center;border-bottom:1px solid var(--teal-light);}
 table.ht tr.r-grp th.h0{text-align:left;border-right:2px solid var(--teal-light);position:sticky;left:0;z-index:3;background:var(--bg);min-width:140px;}
 table.ht tr.r-grp th.hkpi{border-left:2px solid var(--teal-light);}
+table.ht tr.r-grp th.hkpi-pkp{border-left:2px solid var(--orange);color:var(--orange);}
 table.ht tr.r-sub th{background:var(--white);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--stone);text-align:right;border-bottom:2px solid var(--border);}
 table.ht tr.r-sub th.h0{text-align:left;border-right:2px solid var(--teal-light);position:sticky;left:0;z-index:3;background:var(--white);}
 table.ht tr.r-sub th.hv{color:var(--t2);font-weight:700;}
 table.ht tr.r-sub th.he{border-left:1px dashed var(--border);}
+table.ht tr.r-sub th.he-pkp{border-left:1px dashed rgba(196,122,30,.3);color:var(--orange);}
 table.ht tbody td{font-size:12px;color:var(--t2);text-align:right;vertical-align:middle;}
 table.ht tbody td.c0{text-align:left;font-weight:600;color:var(--text);position:sticky;left:0;background:var(--white);z-index:1;border-right:2px solid var(--teal-light);}
 table.ht tbody td.cv{font-weight:700;color:var(--text);border-left:2px solid var(--teal-light);}
+table.ht tbody td.cv-pkp{font-weight:700;color:var(--text);border-left:2px solid var(--orange);}
 table.ht tbody td.ce{font-size:11px;border-left:1px dashed var(--border);}
+table.ht tbody td.ce-pkp{font-size:11px;border-left:1px dashed rgba(196,122,30,.3);}
 table.ht tbody td.pos{color:var(--green);}
 table.ht tbody td.neg{color:var(--red);}
 table.ht tbody td.neu{color:var(--t3);}
+table.ht tbody td.pkp{color:var(--orange);}
 table.ht tbody tr:hover td{background:var(--teal-pale);}
 table.ht tbody tr:hover td.c0{background:var(--teal-pale);}
 table.ht tbody tr:last-child td{border-bottom:none;}
@@ -215,6 +226,7 @@ table.ht tbody tr:last-child td{border-bottom:none;}
     <button class="abtn" id="btnRefresh">↻ Actualiser</button>
   </div>
 
+  <!-- ══ VUE D'ENSEMBLE ══ -->
   <div class="page active" id="page-overview">
     <div id="errb" class="errb"></div>
     <div class="sec-hdr"><span class="sec-ttl">Indicateurs clés</span><span id="plbl" style="font-size:11px;color:var(--t3)"></span></div>
@@ -234,11 +246,13 @@ table.ht tbody tr:last-child td{border-bottom:none;}
         <button class="tbtn active" id="cp-LY">STLY</button>
         <button class="tbtn" id="cp-Budget">Budget</button>
         <button class="tbtn" id="cp-Forecast">Adj Forecast</button>
+        <button class="tbtn pkp-btn" id="cp-Pickup">Pickup J-7</button>
       </div>
     </div>
     <div class="twrap"><div class="tscroll"><table class="ht" id="htbl"></table></div></div>
   </div>
 
+  <!-- ══ VUE MENSUELLE ══ -->
   <div class="page" id="page-monthly">
     <div class="sec-hdr"><span class="sec-ttl">Indicateurs clés</span><span id="plbl2" style="font-size:11px;color:var(--t3)"></span></div>
     <div class="kgrid" id="kgrid2"></div>
@@ -257,11 +271,13 @@ table.ht tbody tr:last-child td{border-bottom:none;}
         <button class="tbtn active" id="mcp-LY">STLY</button>
         <button class="tbtn" id="mcp-Budget">Budget</button>
         <button class="tbtn" id="mcp-Forecast">Adj Forecast</button>
+        <button class="tbtn pkp-btn" id="mcp-Pickup">Pickup J-7</button>
       </div>
     </div>
     <div class="twrap"><div class="tscroll"><table class="ht" id="mtbl"></table></div></div>
   </div>
 
+  <!-- ══ SEGMENTS ══ -->
   <div class="page" id="page-segments">
     <div class="sec-hdr"><span class="sec-ttl">Indicateurs clés</span><span id="plbl3" style="font-size:11px;color:var(--t3)"></span></div>
     <div class="kgrid" id="kgrid3"></div>
@@ -280,11 +296,13 @@ table.ht tbody tr:last-child td{border-bottom:none;}
         <button class="tbtn active" id="scp-LY">STLY</button>
         <button class="tbtn" id="scp-Budget">Budget</button>
         <button class="tbtn" id="scp-Forecast">Adj Forecast</button>
+        <button class="tbtn pkp-btn" id="scp-Pickup">Pickup J-7</button>
       </div>
     </div>
     <div class="twrap"><div class="tscroll"><table class="ht" id="stbl"></table></div></div>
   </div>
 
+  <!-- ══ DATA INTEGRITY ══ -->
   <div class="page" id="page-integrity">
     <div class="sec-hdr" style="margin-bottom:14px"><span class="sec-ttl">Data Integrity & Diagnostic</span></div>
     <div class="di-grid" id="digrid"></div>
@@ -308,26 +326,21 @@ const SCOPES  = ['https://analysis.windows.net/powerbi/api/Dataset.Read.All'];
 
 async function getToken() {
   await msalApp.initialize();
-  // Gère le retour après redirection Microsoft
   const redirectResult = await msalApp.handleRedirectPromise();
   if (redirectResult && redirectResult.accessToken) {
-    if (redirectResult.account && redirectResult.account.name) {
+    if (redirectResult.account && redirectResult.account.name)
       document.getElementById('userLabel').textContent = redirectResult.account.name.split(' ')[0];
-    }
     return redirectResult.accessToken;
   }
-  // Vérifie si un compte est déjà en session
   const accounts = msalApp.getAllAccounts();
   if (accounts.length > 0) {
     try {
       const r = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: accounts[0] });
-      if (accounts[0].name) {
+      if (accounts[0].name)
         document.getElementById('userLabel').textContent = accounts[0].name.split(' ')[0];
-      }
       return r.accessToken;
     } catch(e) { /* token silencieux échoué → redirection */ }
   }
-  // Pas de session → redirige vers Microsoft (sans popup)
   await msalApp.loginRedirect({ scopes: SCOPES });
   return null;
 }
@@ -339,6 +352,7 @@ const CFG = {
   api:        'https://api.powerbi.com/v1.0/myorg',
   hotelCol:   'hotelName',
   occDecimal: true,
+  // KPIs principaux
   M: {
     RoomSold:{ otb:'Room Sold',    ly:'Room Sold N-1',    bud:'Room Sold Budget',    fct:'Room Sold Projection',    t:'int', lbl:'Room Sold'    },
     Occ:     { otb:'Occ %',        ly:'Occ % N-1',        bud:'Occ % Budget',        fct:'Occ % Projection',        t:'pct', lbl:'Occ %'        },
@@ -346,21 +360,33 @@ const CFG = {
     Revenue: { otb:'Room Revenue', ly:'Room Revenue N-1', bud:'Room Revenue Budget', fct:'Room Revenue Projection', t:'rev', lbl:'Room Revenue' },
     RevPAR:  { otb:'RevPAR',       ly:'RevPAR N-1',       bud:'RevPAR Budget',       fct:'RevPAR Projection',       t:'eur', lbl:'RevPAR'       },
   },
+  // Mesures Pickup J-7
+  PKP: {
+    RoomSold:{ cur:'Pickup Room Sold',    ly:'Pickup Room Sold N-1'    },
+    Occ:     { cur:'Pickup Occ %',        ly:'Pickup Occ % N-1'        },
+    ADR:     { cur:'Pickup ADR',          ly:'Pickup ADR N-1'          },
+    Revenue: { cur:'Pickup Room Revenue', ly:'Pickup Room Revenue N-1' },
+    RevPAR:  { cur:'Pickup RevPAR',       ly:'Pickup RevPAR N-1'       },
+  },
 };
 
 /* ══ MAPPING ════════════════════════════════════════════════════════════════ */
 const SC_MAP = { OTB:'OTB', Forecast:'Fct', Budget:'Bud', LY:'LY' };
-const CP_MAP = { LY:'LY', Budget:'Bud', Forecast:'Fct' };
+// Pickup → compare scénario sélectionné vs la valeur pickup (Pkp = OTB J-7)
+const CP_MAP = { LY:'LY', Budget:'Bud', Forecast:'Fct', Pickup:'Pkp' };
 
 /* ══ STATE ══════════════════════════════════════════════════════════════════ */
 const S = {
   token: null, dsId: null,
   allH: [], selH: new Set(),
   period: 'custom', comp: 'N1', curr: 'EUR',
-  sc: 'OTB', cp: 'LY', msc: 'OTB', mcp: 'LY',
-  allHotelRows: [], allMonthRows: [], allMonthHotelRows: [],
-  monthLoaded: false, allSegmentHotelRows: [], segmentLoaded: false,
-  ssc: 'OTB', scp: 'LY', log: [],
+  sc: 'OTB', cp: 'LY',
+  msc: 'OTB', mcp: 'LY',
+  ssc: 'OTB', scp: 'LY',
+  allHotelRows: [],
+  allMonthHotelRows: [], monthLoaded: false,
+  allSegmentHotelRows: [], segmentLoaded: false,
+  log: [],
 };
 
 /* ══ FORMAT ═════════════════════════════════════════════════════════════════ */
@@ -426,12 +452,16 @@ function nv(row, key) {
   return null;
 }
 
+/* ── Colonnes DAX : KPIs standard + Pickup J-7 ─────────────────────────── */
 function mcols() {
   const kpiCols = Object.entries(CFG.M).map(([k,m]) =>
     `"${k}_OTB",[${m.otb}],"${k}_LY",[${m.ly}],"${k}_Bud",[${m.bud}],"${k}_Fct",[${m.fct}]`
   ).join(',');
+  const pkpCols = Object.entries(CFG.PKP).map(([k,p]) =>
+    `"${k}_Pkp",[${p.cur}],"${k}_PkpLY",[${p.ly}]`
+  ).join(',');
   const helperCols = '"__AvailableRooms_OTB",[Available Rooms],"__AvailableRooms_LY",[Available Rooms N-1]';
-  return `${kpiCols},${helperCols}`;
+  return `${kpiCols},${pkpCols},${helperCols}`;
 }
 
 function df() {
@@ -446,6 +476,7 @@ function getFilteredHotelRows() {
   return S.allHotelRows.filter(row => S.selH.has(getHotelName(row)));
 }
 
+/* ── Getters génériques ─────────────────────────────────────────────────── */
 function getHotelName(row) {
   for (const k of Object.keys(row)) { if (k.toLowerCase().replace(/[^a-z0-9]/g,'').includes('hotelname')) return String(row[k] || ''); }
   return Object.values(row).find(v => typeof v === 'string') || '';
@@ -470,8 +501,8 @@ function monthLabelFromYM(ym) {
   if (!y||!m||m<1||m>12) return String(ym||'–');
   return new Date(y,m-1,1).toLocaleDateString('fr-FR',{month:'short',year:'numeric'});
 }
-
 function occToDecimal(v) { if (v==null||isNaN(v)) return null; const n=parseFloat(v); return Math.abs(n)>1.5?n/100:n; }
+
 function deriveAvailableRooms(row, sfx) {
   const explicit = nv(row,`__AvailableRooms_${sfx}`);
   if (explicit!=null&&explicit>0) return explicit;
@@ -482,122 +513,241 @@ function deriveAvailableRooms(row, sfx) {
   return null;
 }
 
+/* ── computeSummary : agrège scénarios standard + pickup ────────────────── */
 function computeSummary(rows) {
   const out = {};
+
+  // Scénarios standard — recalcul propre via dénominateur
   ['OTB','LY','Bud','Fct'].forEach(sfx => {
-    const sumRS=rows.reduce((a,r)=>a+(nv(r,`RoomSold_${sfx}`)||0),0);
-    const sumRev=rows.reduce((a,r)=>a+(nv(r,`Revenue_${sfx}`)||0),0);
-    const sumAvail=rows.reduce((a,r)=>a+(deriveAvailableRooms(r,sfx)||0),0);
-    out[`RoomSold_${sfx}`]=sumRS||null; out[`Revenue_${sfx}`]=sumRev||null;
-    out[`ADR_${sfx}`]=sumRS>0?sumRev/sumRS:null;
-    out[`Occ_${sfx}`]=sumAvail>0?sumRS/sumAvail:null;
-    out[`RevPAR_${sfx}`]=sumAvail>0?sumRev/sumAvail:null;
+    const sumRS    = rows.reduce((a,r)=>a+(nv(r,`RoomSold_${sfx}`)||0), 0);
+    const sumRev   = rows.reduce((a,r)=>a+(nv(r,`Revenue_${sfx}`)||0), 0);
+    const sumAvail = rows.reduce((a,r)=>a+(deriveAvailableRooms(r,sfx)||0), 0);
+    out[`RoomSold_${sfx}`] = sumRS  || null;
+    out[`Revenue_${sfx}`]  = sumRev || null;
+    out[`ADR_${sfx}`]      = sumRS > 0     ? sumRev/sumRS   : null;
+    out[`Occ_${sfx}`]      = sumAvail > 0  ? sumRS/sumAvail : null;
+    out[`RevPAR_${sfx}`]   = sumAvail > 0  ? sumRev/sumAvail: null;
   });
+
+  // Pickup — Room Sold et Revenue sommables ; Occ/ADR/RevPAR pondérés par RS
+  ['Pkp','PkpLY'].forEach(sfx => {
+    const sumRS  = rows.reduce((a,r)=>a+(nv(r,`RoomSold_${sfx}`)||0), 0);
+    const sumRev = rows.reduce((a,r)=>a+(nv(r,`Revenue_${sfx}`)||0), 0);
+    // Occ et RevPAR : moyenne pondérée approximative (poids = Room Sold pickup)
+    let wOcc=0, wRevPAR=0, totalW=0;
+    rows.forEach(r => {
+      const w   = nv(r,`RoomSold_${sfx}`) || 0;
+      const occ = nv(r,`Occ_${sfx}`);
+      const rp  = nv(r,`RevPAR_${sfx}`);
+      if (w>0) {
+        if (occ!=null)  { wOcc    += occToDecimal(occ)*w; }
+        if (rp!=null)   { wRevPAR += rp*w; }
+        totalW += w;
+      }
+    });
+    out[`RoomSold_${sfx}`] = sumRS  || null;
+    out[`Revenue_${sfx}`]  = sumRev || null;
+    out[`ADR_${sfx}`]      = sumRS > 0   ? sumRev/sumRS       : null;
+    out[`Occ_${sfx}`]      = totalW > 0  ? wOcc/totalW        : null;
+    out[`RevPAR_${sfx}`]   = totalW > 0  ? wRevPAR/totalW     : null;
+  });
+
   return out;
 }
 
+/* ══ LOAD ════════════════════════════════════════════════════════════════════ */
 async function loadAll() {
   if (!S.dsId) return;
   try { S.token = await getToken(); if (!S.token) return; } catch(e) {}
-  S.comp=document.getElementById('compSel').value; S.curr=document.getElementById('currSel').value;
+  S.comp = document.getElementById('compSel').value;
+  S.curr = document.getElementById('currSel').value;
   loading(true); showErr('');
   try {
-    const D=df();
-    S.allHotelRows = await dax(`EVALUATE SUMMARIZECOLUMNS(dim_hotel[${CFG.hotelCol}],${D}KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),${mcols()}) ORDER BY dim_hotel[${CFG.hotelCol}] ASC`);
-    S.allMonthRows=[]; S.allMonthHotelRows=[]; S.monthLoaded=false; S.allSegmentHotelRows=[]; S.segmentLoaded=false;
+    const D = df();
+    S.allHotelRows = await dax(
+      `EVALUATE SUMMARIZECOLUMNS(dim_hotel[${CFG.hotelCol}],${D}` +
+      `KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),` +
+      `${mcols()}) ORDER BY dim_hotel[${CFG.hotelCol}] ASC`
+    );
+    S.allMonthHotelRows=[]; S.monthLoaded=false;
+    S.allSegmentHotelRows=[]; S.segmentLoaded=false;
     renderAll();
-    if (document.getElementById('page-monthly')?.classList.contains('active')) { await loadMonthly(); renderMonthlyView(); }
+    if (document.getElementById('page-monthly')?.classList.contains('active'))  { await loadMonthly();  renderMonthlyView();  }
     if (document.getElementById('page-segments')?.classList.contains('active')) { await loadSegments(); renderSegmentsView(); }
-    const now=new Date().toLocaleTimeString('fr-FR');
-    document.getElementById('lupd').textContent='Mis à jour '+now;
-    const lbl=document.getElementById('dFrom').value+' → '+document.getElementById('dTo').value;
+    const now = new Date().toLocaleTimeString('fr-FR');
+    document.getElementById('lupd').textContent = 'Mis à jour '+now;
+    const lbl = document.getElementById('dFrom').value+' → '+document.getElementById('dTo').value;
     ['plbl','plbl2','plbl3'].forEach(id=>document.getElementById(id).textContent=lbl);
     logDI('Rechargé — '+now+` (${S.allHotelRows.length} hôtels)`);
-  } catch(e) { showErr(e.message); logDI('⚠️ '+e.message); } finally { loading(false); }
+  } catch(e) { showErr(e.message); logDI('⚠️ '+e.message); }
+  finally { loading(false); }
 }
 
 async function loadMonthly() {
   if (!S.dsId||S.monthLoaded) return; loading(true);
   try {
-    const D=df();
-    S.allMonthHotelRows = await dax(`EVALUATE SUMMARIZECOLUMNS(dim_date_serving[YearMonth],dim_date_serving[MonthNameShort],dim_hotel[${CFG.hotelCol}],${D}KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),${mcols()}) ORDER BY dim_date_serving[YearMonth] ASC, dim_hotel[${CFG.hotelCol}] ASC`);
-    S.allMonthRows=[]; S.monthLoaded=true;
+    const D = df();
+    S.allMonthHotelRows = await dax(
+      `EVALUATE SUMMARIZECOLUMNS(dim_date_serving[YearMonth],dim_date_serving[MonthNameShort],dim_hotel[${CFG.hotelCol}],${D}` +
+      `KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),` +
+      `${mcols()}) ORDER BY dim_date_serving[YearMonth] ASC, dim_hotel[${CFG.hotelCol}] ASC`
+    );
+    S.monthLoaded = true;
     logDI('Vue mensuelle chargée — '+S.allMonthHotelRows.length+' lignes');
-  } catch(e) { showErr(e.message); } finally { loading(false); }
+  } catch(e) { showErr(e.message); }
+  finally { loading(false); }
 }
 
 async function loadSegments() {
   if (!S.dsId||S.segmentLoaded) return; loading(true);
   try {
-    const D=df();
-    S.allSegmentHotelRows = await dax(`EVALUATE SUMMARIZECOLUMNS(dim_statclass[StatCategory],dim_hotel[${CFG.hotelCol}],${D}KEEPFILTERS(FILTER(ALL(dim_statclass),NOT ISBLANK(dim_statclass[StatCategory])&&dim_statclass[StatCategory]<>"")),KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),${mcols()}) ORDER BY dim_statclass[StatCategory] ASC, dim_hotel[${CFG.hotelCol}] ASC`);
-    S.segmentLoaded=true;
+    const D = df();
+    S.allSegmentHotelRows = await dax(
+      `EVALUATE SUMMARIZECOLUMNS(dim_statclass[StatCategory],dim_hotel[${CFG.hotelCol}],${D}` +
+      `KEEPFILTERS(FILTER(ALL(dim_statclass),NOT ISBLANK(dim_statclass[StatCategory])&&dim_statclass[StatCategory]<>"")),` +
+      `KEEPFILTERS(FILTER(ALL(dim_hotel),NOT ISBLANK(dim_hotel[${CFG.hotelCol}])&&dim_hotel[${CFG.hotelCol}]<>"")),` +
+      `${mcols()}) ORDER BY dim_statclass[StatCategory] ASC, dim_hotel[${CFG.hotelCol}] ASC`
+    );
+    S.segmentLoaded = true;
     logDI('Segments chargés — '+S.allSegmentHotelRows.length+' lignes');
-  } catch(e) { showErr(e.message); } finally { loading(false); }
+  } catch(e) { showErr(e.message); }
+  finally { loading(false); }
 }
 
+/* ══ RENDER ══════════════════════════════════════════════════════════════════ */
 function renderAll() {
-  const filtered=getFilteredHotelRows(), summary=computeSummary(filtered);
-  renderKPIs('kgrid',summary,S.comp); renderTable('htbl',filtered,getHotelName,S.sc,S.cp);
+  const filtered = getFilteredHotelRows();
+  renderKPIs('kgrid', computeSummary(filtered), S.comp);
+  renderTable('htbl', filtered, getHotelName, S.sc, S.cp);
 }
 function renderMonthlyView() {
-  let src=S.allMonthHotelRows||[];
-  if (S.selH.size>0) src=src.filter(r=>S.selH.has(getHotelName(r)));
-  renderKPIs('kgrid2',computeSummary(getFilteredHotelRows()),S.comp);
-  renderTable('mtbl',aggregateByMonth(src),getMonthName,S.msc,S.mcp);
+  let src = S.allMonthHotelRows || [];
+  if (S.selH.size > 0) src = src.filter(r=>S.selH.has(getHotelName(r)));
+  renderKPIs('kgrid2', computeSummary(getFilteredHotelRows()), S.comp);
+  renderTable('mtbl', aggregateByMonth(src), getMonthName, S.msc, S.mcp);
 }
 function renderSegmentsView() {
-  let src=S.allSegmentHotelRows||[];
-  if (S.selH.size>0) src=src.filter(r=>S.selH.has(getHotelName(r)));
-  renderKPIs('kgrid3',computeSummary(getFilteredHotelRows()),S.comp);
-  renderTable('stbl',aggregateByStatCategory(src,S.ssc),getSegmentName,S.ssc,S.scp,['RoomSold','ADR','Revenue']);
+  let src = S.allSegmentHotelRows || [];
+  if (S.selH.size > 0) src = src.filter(r=>S.selH.has(getHotelName(r)));
+  renderKPIs('kgrid3', computeSummary(getFilteredHotelRows()), S.comp);
+  renderTable('stbl', aggregateByStatCategory(src, S.ssc), getSegmentName, S.ssc, S.scp, ['RoomSold','ADR','Revenue']);
 }
 
+/* ── Agrégation mensuelle ──────────────────────────────────────────────── */
 function aggregateByMonth(src) {
-  const map=new Map();
-  src.forEach(row=>{
-    const ym=getYearMonth(row), mn=getMonthShort(row); if (!ym) return;
-    if (!map.has(ym)) { const b={YearMonth:ym,MonthNameShort:mn}; Object.keys(CFG.M).forEach(k=>['OTB','LY','Bud','Fct'].forEach(s=>{b[`${k}_${s}`]=null;})); ['OTB','LY','Bud','Fct'].forEach(s=>{b[`__AvailableRooms_${s}`]=0;}); map.set(ym,b); }
-    const agg=map.get(ym); if (!agg.MonthNameShort&&mn) agg.MonthNameShort=mn;
-    ['OTB','LY','Bud','Fct'].forEach(sfx=>{
-      const rs=nv(row,`RoomSold_${sfx}`),rev=nv(row,`Revenue_${sfx}`),avail=deriveAvailableRooms(row,sfx);
-      if (rs!=null) agg[`RoomSold_${sfx}`]=(agg[`RoomSold_${sfx}`]||0)+rs;
-      if (rev!=null) agg[`Revenue_${sfx}`]=(agg[`Revenue_${sfx}`]||0)+rev;
-      if (avail!=null&&avail>0) agg[`__AvailableRooms_${sfx}`]+=avail;
+  const map = new Map();
+  src.forEach(row => {
+    const ym = getYearMonth(row), mn = getMonthShort(row);
+    if (!ym) return;
+    if (!map.has(ym)) {
+      const b = { YearMonth:ym, MonthNameShort:mn };
+      Object.keys(CFG.M).forEach(k =>
+        ['OTB','LY','Bud','Fct','Pkp','PkpLY'].forEach(s => { b[`${k}_${s}`]=null; })
+      );
+      ['OTB','LY','Bud','Fct'].forEach(s => { b[`__AvailableRooms_${s}`]=0; });
+      // Pour pickup pondéré
+      ['Pkp','PkpLY'].forEach(s => { b[`__wOcc_${s}`]=0; b[`__wRevPAR_${s}`]=0; b[`__wTotal_${s}`]=0; });
+      map.set(ym, b);
+    }
+    const agg = map.get(ym);
+    if (!agg.MonthNameShort&&mn) agg.MonthNameShort=mn;
+
+    ['OTB','LY','Bud','Fct'].forEach(sfx => {
+      const rs=nv(row,`RoomSold_${sfx}`), rev=nv(row,`Revenue_${sfx}`), avail=deriveAvailableRooms(row,sfx);
+      if (rs!=null)            agg[`RoomSold_${sfx}`] = (agg[`RoomSold_${sfx}`]||0)+rs;
+      if (rev!=null)           agg[`Revenue_${sfx}`]  = (agg[`Revenue_${sfx}`]||0)+rev;
+      if (avail!=null&&avail>0) agg[`__AvailableRooms_${sfx}`] += avail;
+    });
+    ['Pkp','PkpLY'].forEach(sfx => {
+      const rs  = nv(row,`RoomSold_${sfx}`)||0;
+      const rev = nv(row,`Revenue_${sfx}`);
+      const occ = nv(row,`Occ_${sfx}`);
+      const rp  = nv(row,`RevPAR_${sfx}`);
+      agg[`RoomSold_${sfx}`] = (agg[`RoomSold_${sfx}`]||0) + rs;
+      if (rev!=null) agg[`Revenue_${sfx}`] = (agg[`Revenue_${sfx}`]||0) + rev;
+      if (rs>0) {
+        if (occ!=null) agg[`__wOcc_${sfx}`]    += occToDecimal(occ)*rs;
+        if (rp!=null)  agg[`__wRevPAR_${sfx}`] += rp*rs;
+        agg[`__wTotal_${sfx}`] += rs;
+      }
     });
   });
-  const rows=Array.from(map.values()).sort((a,b)=>ymSortValue(a.YearMonth)-ymSortValue(b.YearMonth));
-  rows.forEach(r=>['OTB','LY','Bud','Fct'].forEach(sfx=>{
-    const rs=r[`RoomSold_${sfx}`],rev=r[`Revenue_${sfx}`],avail=r[`__AvailableRooms_${sfx}`];
-    r[`ADR_${sfx}`]=(rs&&rs!==0&&rev!=null)?rev/rs:null;
-    r[`Occ_${sfx}`]=(avail&&avail>0&&rs!=null)?rs/avail:null;
-    r[`RevPAR_${sfx}`]=(avail&&avail>0&&rev!=null)?rev/avail:null;
-  }));
+
+  const rows = Array.from(map.values()).sort((a,b)=>ymSortValue(a.YearMonth)-ymSortValue(b.YearMonth));
+  rows.forEach(r => {
+    ['OTB','LY','Bud','Fct'].forEach(sfx => {
+      const rs=r[`RoomSold_${sfx}`], rev=r[`Revenue_${sfx}`], avail=r[`__AvailableRooms_${sfx}`];
+      r[`ADR_${sfx}`]    = (rs&&rs!==0&&rev!=null) ? rev/rs : null;
+      r[`Occ_${sfx}`]    = (avail&&avail>0&&rs!=null) ? rs/avail : null;
+      r[`RevPAR_${sfx}`] = (avail&&avail>0&&rev!=null) ? rev/avail : null;
+    });
+    ['Pkp','PkpLY'].forEach(sfx => {
+      const rs=r[`RoomSold_${sfx}`], rev=r[`Revenue_${sfx}`], wt=r[`__wTotal_${sfx}`]||0;
+      r[`ADR_${sfx}`]    = (rs&&rs>0&&rev!=null) ? rev/rs : null;
+      r[`Occ_${sfx}`]    = wt>0 ? r[`__wOcc_${sfx}`]/wt    : null;
+      r[`RevPAR_${sfx}`] = wt>0 ? r[`__wRevPAR_${sfx}`]/wt : null;
+    });
+  });
   return rows;
 }
 
+/* ── Agrégation segments ──────────────────────────────────────────────── */
 function aggregateByStatCategory(src, scenario) {
-  const map=new Map();
-  src.forEach(row=>{
-    const seg=getStatCategory(row)||'Non renseigné';
-    if (!map.has(seg)) { const b={StatCategory:seg}; Object.keys(CFG.M).forEach(k=>['OTB','LY','Bud','Fct'].forEach(s=>{b[`${k}_${s}`]=null;})); ['OTB','LY','Bud','Fct'].forEach(s=>{b[`__AvailableRooms_${s}`]=0;}); map.set(seg,b); }
-    const agg=map.get(seg);
-    ['OTB','LY','Bud','Fct'].forEach(sfx=>{
-      const rs=nv(row,`RoomSold_${sfx}`),rev=nv(row,`Revenue_${sfx}`),avail=deriveAvailableRooms(row,sfx);
-      if (rs!=null) agg[`RoomSold_${sfx}`]=(agg[`RoomSold_${sfx}`]||0)+rs;
-      if (rev!=null) agg[`Revenue_${sfx}`]=(agg[`Revenue_${sfx}`]||0)+rev;
-      if (avail!=null&&avail>0) agg[`__AvailableRooms_${sfx}`]+=avail;
+  const map = new Map();
+  src.forEach(row => {
+    const seg = getStatCategory(row)||'Non renseigné';
+    if (!map.has(seg)) {
+      const b = { StatCategory:seg };
+      Object.keys(CFG.M).forEach(k =>
+        ['OTB','LY','Bud','Fct','Pkp','PkpLY'].forEach(s => { b[`${k}_${s}`]=null; })
+      );
+      ['OTB','LY','Bud','Fct'].forEach(s => { b[`__AvailableRooms_${s}`]=0; });
+      ['Pkp','PkpLY'].forEach(s => { b[`__wOcc_${s}`]=0; b[`__wRevPAR_${s}`]=0; b[`__wTotal_${s}`]=0; });
+      map.set(seg, b);
+    }
+    const agg = map.get(seg);
+    ['OTB','LY','Bud','Fct'].forEach(sfx => {
+      const rs=nv(row,`RoomSold_${sfx}`), rev=nv(row,`Revenue_${sfx}`), avail=deriveAvailableRooms(row,sfx);
+      if (rs!=null)            agg[`RoomSold_${sfx}`] = (agg[`RoomSold_${sfx}`]||0)+rs;
+      if (rev!=null)           agg[`Revenue_${sfx}`]  = (agg[`Revenue_${sfx}`]||0)+rev;
+      if (avail!=null&&avail>0) agg[`__AvailableRooms_${sfx}`] += avail;
+    });
+    ['Pkp','PkpLY'].forEach(sfx => {
+      const rs  = nv(row,`RoomSold_${sfx}`)||0;
+      const rev = nv(row,`Revenue_${sfx}`);
+      const occ = nv(row,`Occ_${sfx}`);
+      const rp  = nv(row,`RevPAR_${sfx}`);
+      agg[`RoomSold_${sfx}`] = (agg[`RoomSold_${sfx}`]||0)+rs;
+      if (rev!=null) agg[`Revenue_${sfx}`] = (agg[`Revenue_${sfx}`]||0)+rev;
+      if (rs>0) {
+        if (occ!=null) agg[`__wOcc_${sfx}`]    += occToDecimal(occ)*rs;
+        if (rp!=null)  agg[`__wRevPAR_${sfx}`] += rp*rs;
+        agg[`__wTotal_${sfx}`] += rs;
+      }
     });
   });
-  const rows=Array.from(map.values());
-  rows.forEach(r=>['OTB','LY','Bud','Fct'].forEach(sfx=>{
-    const rs=r[`RoomSold_${sfx}`],rev=r[`Revenue_${sfx}`],avail=r[`__AvailableRooms_${sfx}`];
-    r[`ADR_${sfx}`]=(rs&&rs!==0&&rev!=null)?rev/rs:null;
-    r[`Occ_${sfx}`]=(avail&&avail>0&&rs!=null)?rs/avail:null;
-    r[`RevPAR_${sfx}`]=(avail&&avail>0&&rev!=null)?rev/avail:null;
-  }));
-  const scKey=SC_MAP[scenario]||'OTB';
-  rows.sort((a,b)=>(nv(b,`RoomSold_${scKey}`)||0)-(nv(a,`RoomSold_${scKey}`)||0)||getSegmentName(a).localeCompare(getSegmentName(b),'fr',{sensitivity:'base'}));
+
+  const rows = Array.from(map.values());
+  rows.forEach(r => {
+    ['OTB','LY','Bud','Fct'].forEach(sfx => {
+      const rs=r[`RoomSold_${sfx}`], rev=r[`Revenue_${sfx}`], avail=r[`__AvailableRooms_${sfx}`];
+      r[`ADR_${sfx}`]    = (rs&&rs!==0&&rev!=null) ? rev/rs : null;
+      r[`Occ_${sfx}`]    = (avail&&avail>0&&rs!=null) ? rs/avail : null;
+      r[`RevPAR_${sfx}`] = (avail&&avail>0&&rev!=null) ? rev/avail : null;
+    });
+    ['Pkp','PkpLY'].forEach(sfx => {
+      const rs=r[`RoomSold_${sfx}`], rev=r[`Revenue_${sfx}`], wt=r[`__wTotal_${sfx}`]||0;
+      r[`ADR_${sfx}`]    = (rs&&rs>0&&rev!=null) ? rev/rs : null;
+      r[`Occ_${sfx}`]    = wt>0 ? r[`__wOcc_${sfx}`]/wt    : null;
+      r[`RevPAR_${sfx}`] = wt>0 ? r[`__wRevPAR_${sfx}`]/wt : null;
+    });
+  });
+
+  const scKey = SC_MAP[scenario]||'OTB';
+  rows.sort((a,b)=>
+    (nv(b,`RoomSold_${scKey}`)||0)-(nv(a,`RoomSold_${scKey}`)||0) ||
+    getSegmentName(a).localeCompare(getSegmentName(b),'fr',{sensitivity:'base'})
+  );
   return rows;
 }
 
@@ -608,44 +758,96 @@ function getMonthName(row) {
   return ym ? monthLabelFromYM(ym) : '–';
 }
 
+/* ── KPI cards ─────────────────────────────────────────────────────────── */
 function renderKPIs(gridId, summary, comp) {
-  const ck=comp==='N1'?'LY':comp==='Budget'?'Bud':'Fct';
-  const cl=comp==='N1'?'STLY':comp==='Budget'?'Budget':'Adj Forecast';
-  document.getElementById(gridId).innerHTML=Object.entries(CFG.M).map(([k,m])=>{
-    const otb=summary[`${k}_OTB`],ly=summary[`${k}_LY`],bud=summary[`${k}_Bud`],fct=summary[`${k}_Fct`];
-    const ref={LY:ly,Bud:bud,Fct:fct}[ck], bd=fp(otb,ref,m.t);
-    const rows=[['vs STLY',otb,ly],['vs Adj Forecast',otb,fct],['vs Budget',otb,bud],['Adj Fct vs Budget',fct,bud],['Adj Fct vs STLY',fct,ly]]
-      .map(([l,a,b])=>{const d=fp(a,b,m.t);return `<div class="krow"><span class="klbl">${l}</span><div class="kvals"><span class="kref">${fv(b,m.t)}</span><span class="kd ${d.c}">${d.s}</span></div></div>`;}).join('');
-    return `<div class="kcard ${bd.c}"><div class="kn">${m.lbl}</div><div class="km"><span class="kv">${fv(otb,m.t)}</span><span class="kbdg ${bd.c}">${bd.s} ${cl}</span></div><div class="kdiv"></div><div class="kcomps">${rows}</div></div>`;
+  const ck = comp==='N1'?'LY':comp==='Budget'?'Bud':'Fct';
+  const cl = comp==='N1'?'STLY':comp==='Budget'?'Budget':'Adj Forecast';
+  document.getElementById(gridId).innerHTML = Object.entries(CFG.M).map(([k,m]) => {
+    const otb=summary[`${k}_OTB`], ly=summary[`${k}_LY`];
+    const bud=summary[`${k}_Bud`], fct=summary[`${k}_Fct`];
+    const pkp=summary[`${k}_Pkp`];
+    const ref = {LY:ly,Bud:bud,Fct:fct}[ck];
+    const bd  = fp(otb, ref, m.t);
+    const dpkp = fa(otb, pkp, m.t);
+    const rows = [
+      ['vs STLY',otb,ly],['vs Adj Forecast',otb,fct],['vs Budget',otb,bud],
+      ['Adj Fct vs Budget',fct,bud],['Adj Fct vs STLY',fct,ly],
+    ].map(([l,a,b])=>{
+      const d=fp(a,b,m.t);
+      return `<div class="krow"><span class="klbl">${l}</span><div class="kvals"><span class="kref">${fv(b,m.t)}</span><span class="kd ${d.c}">${d.s}</span></div></div>`;
+    }).join('');
+    const pkpRow = `<div class="krow" style="border-top:1px solid var(--border);padding-top:3px;margin-top:1px"><span class="klbl" style="color:var(--orange);font-weight:700">↑ Pickup J-7</span><div class="kvals"><span class="kref">${fv(pkp,m.t)}</span><span class="kd pkp">${dpkp.s}</span></div></div>`;
+    return `<div class="kcard ${bd.c}">
+      <div class="kn">${m.lbl}</div>
+      <div class="km"><span class="kv">${fv(otb,m.t)}</span><span class="kbdg ${bd.c}">${bd.s} ${cl}</span></div>
+      <div class="kdiv"></div>
+      <div class="kcomps">${rows}${pkpRow}</div>
+    </div>`;
   }).join('');
 }
 
+/* ── Table ─────────────────────────────────────────────────────────────── */
 function renderTable(tblId, rows, nameFn, sc, cp, includeKeys=null) {
-  const tbl=document.getElementById(tblId);
-  const scKey=SC_MAP[sc]||'OTB', cpKey=CP_MAP[cp]||'LY';
-  const scLbl=sc==='LY'?'STLY':sc==='Forecast'?'Adj Fct':sc;
-  const cpLbl=cp==='LY'?'STLY':cp==='Forecast'?'Adj Fct':cp;
-  const kpis=Object.entries(CFG.M).filter(([k])=>!includeKeys||includeKeys.includes(k));
-  if (!rows.length) { tbl.innerHTML=`<tbody><tr><td colspan="${1+(kpis.length*3)}" style="padding:22px;text-align:center;color:var(--t3)">Aucune donnée</td></tr></tbody>`; return; }
-  let h1=`<th class="h0">&nbsp;</th>`;
-  kpis.forEach(([k,m])=>{h1+=`<th class="hkpi" colspan="3">${m.lbl}</th>`;});
-  let h2=`<th class="h0"></th>`;
-  kpis.forEach(([k,m])=>{const pLbl=m.t==='pct'?`VS ${cpLbl} pts`:`VS ${cpLbl} %`; h2+=`<th class="hv">${scLbl}</th><th class="he">VS ${cpLbl}</th><th class="he">${pLbl}</th>`;});
-  const tot=computeSummary(rows);
-  const mkRow=(name,data,isTot)=>{
-    let cells=`<td class="c0">${name}</td>`;
-    kpis.forEach(([k,m])=>{
-      const val=isTot?data[`${k}_${scKey}`]:nv(data,`${k}_${scKey}`);
-      const ref=isTot?data[`${k}_${cpKey}`]:nv(data,`${k}_${cpKey}`);
-      const dv=fa(val,ref,m.t), dp=fp(val,ref,m.t);
-      cells+=`<td class="cv">${fv(val,m.t)}</td><td class="ce ${dv.c}">${dv.s}</td><td class="ce ${dp.c}">${dp.s}</td>`;
+  const tbl     = document.getElementById(tblId);
+  const scKey   = SC_MAP[sc]  || 'OTB';
+  const cpKey   = CP_MAP[cp]  || 'LY';
+  const isPickup = cp === 'Pickup';
+
+  const scLbl = sc==='LY'?'STLY':sc==='Forecast'?'Adj Fct':sc;
+  const cpLbl = cp==='LY'?'STLY':cp==='Forecast'?'Adj Fct':cp==='Pickup'?'Pickup J-7':cp;
+
+  const kpis = Object.entries(CFG.M).filter(([k])=>!includeKeys||includeKeys.includes(k));
+
+  if (!rows.length) {
+    tbl.innerHTML=`<tbody><tr><td colspan="${1+(kpis.length*3)}" style="padding:22px;text-align:center;color:var(--t3)">Aucune donnée</td></tr></tbody>`;
+    return;
+  }
+
+  // En-tête groupe KPI
+  let h1 = `<th class="h0">&nbsp;</th>`;
+  kpis.forEach(([k,m]) => {
+    h1 += `<th class="${isPickup?'hkpi-pkp':'hkpi'}" colspan="3">${m.lbl}</th>`;
+  });
+
+  // En-tête sous-colonnes
+  let h2 = `<th class="h0"></th>`;
+  kpis.forEach(([k,m]) => {
+    const pLabel = m.t==='pct' ? `VS ${cpLbl} pts` : `VS ${cpLbl} %`;
+    if (isPickup) {
+      h2 += `<th class="hv">${scLbl}</th><th class="he-pkp">VS ${cpLbl}</th><th class="he-pkp">${pLabel}</th>`;
+    } else {
+      h2 += `<th class="hv">${scLbl}</th><th class="he">VS ${cpLbl}</th><th class="he">${pLabel}</th>`;
+    }
+  });
+
+  const tot = computeSummary(rows);
+
+  const mkRow = (name, data, isTot) => {
+    let cells = `<td class="c0">${name}</td>`;
+    kpis.forEach(([k,m]) => {
+      const val = isTot ? data[`${k}_${scKey}`] : nv(data,`${k}_${scKey}`);
+      const ref = isTot ? data[`${k}_${cpKey}`] : nv(data,`${k}_${cpKey}`);
+      const dv  = fa(val, ref, m.t);
+      const dp  = fp(val, ref, m.t);
+      // En mode pickup : delta en orange (pas vert/rouge — le pickup n'est pas un objectif)
+      const dvCls = isPickup ? (dv.c==='neu'?'neu':'pkp') : dv.c;
+      const dpCls = isPickup ? (dp.c==='neu'?'neu':'pkp') : dp.c;
+      if (isPickup) {
+        cells += `<td class="cv-pkp">${fv(val,m.t)}</td><td class="ce-pkp ${dvCls}">${dv.s}</td><td class="ce-pkp ${dpCls}">${dp.s}</td>`;
+      } else {
+        cells += `<td class="cv">${fv(val,m.t)}</td><td class="ce ${dv.c}">${dv.s}</td><td class="ce ${dp.c}">${dp.s}</td>`;
+      }
     });
     return `<tr class="${isTot?'trow':''}">${cells}</tr>`;
   };
-  tbl.innerHTML=`<thead><tr class="r-grp">${h1}</tr><tr class="r-sub">${h2}</tr></thead><tbody>${rows.map(r=>mkRow(nameFn(r),r,false)).join('')}${mkRow('TOTAL',tot,true)}</tbody>`;
+
+  tbl.innerHTML =
+    `<thead><tr class="r-grp">${h1}</tr><tr class="r-sub">${h2}</tr></thead>` +
+    `<tbody>${rows.map(r=>mkRow(nameFn(r),r,false)).join('')}${mkRow('TOTAL',tot,true)}</tbody>`;
 }
 
-function dStr(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+/* ══ PÉRIODE ════════════════════════════════════════════════════════════════ */
+function dStr(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function setPeriod(type) {
   S.period=type;
   ['YTD','TTM','Custom'].forEach(p=>document.getElementById('pb'+p).classList.toggle('active',p.toLowerCase()===type));
@@ -659,11 +861,13 @@ function setPeriod(type) {
   loadAll();
 }
 
-function buildHL(hotels){S.allH=hotels;renderHL(hotels);}
+/* ══ HOTEL DROPDOWN ══════════════════════════════════════════════════════════ */
+function buildHL(hotels){ S.allH=hotels; renderHL(hotels); }
 function renderHL(hotels) {
   const list=document.getElementById('hdl');
   list.innerHTML=hotels.map(h=>{
-    const chk=S.selH.size===0||S.selH.has(h)?'checked':'', id='cb_'+h.replace(/\W/g,'_');
+    const chk=S.selH.size===0||S.selH.has(h)?'checked':'';
+    const id='cb_'+h.replace(/\W/g,'_');
     return `<div class="hdi"><input type="checkbox" id="${id}" value="${h}" ${chk}><label for="${id}">${h}</label></div>`;
   }).join('');
   list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
@@ -676,85 +880,128 @@ function renderHL(hotels) {
     });
   });
 }
-function filterHL(){const q=document.getElementById('hsrch').value.toLowerCase(); renderHL(S.allH.filter(h=>h.toLowerCase().includes(q)));}
-function updateHBtn(){const n=S.selH.size; document.getElementById('hbtntxt').textContent=n===0?'Tous les hôtels':n===1?[...S.selH][0].substring(0,26):`${n} hôtels`;}
-function showPage(name){['overview','monthly','segments','integrity'].forEach(p=>{document.getElementById('page-'+p).classList.toggle('active',p===name);document.getElementById('tab-'+p).classList.toggle('active',p===name);});}
-function loading(on){document.getElementById('loadBar').classList.toggle('show',on);document.getElementById('btnRefresh').textContent=on?'…':'↻ Actualiser';}
-function showErr(msg){const el=document.getElementById('errb');el.textContent=msg?'⚠️ '+msg:'';el.style.display=msg?'block':'none';}
-function logDI(msg){S.log.unshift(`[${new Date().toLocaleTimeString('fr-FR')}] ${msg}`);if(S.log.length>20)S.log.pop();const el=document.getElementById('dilog');if(el)el.innerHTML=S.log.join('<br>');}
+function filterHL(){ const q=document.getElementById('hsrch').value.toLowerCase(); renderHL(S.allH.filter(h=>h.toLowerCase().includes(q))); }
+function updateHBtn(){ const n=S.selH.size; document.getElementById('hbtntxt').textContent=n===0?'Tous les hôtels':n===1?[...S.selH][0].substring(0,26):`${n} hôtels`; }
+
+/* ══ UI HELPERS ══════════════════════════════════════════════════════════════ */
+function showPage(name){
+  ['overview','monthly','segments','integrity'].forEach(p=>{
+    document.getElementById('page-'+p).classList.toggle('active',p===name);
+    document.getElementById('tab-'+p).classList.toggle('active',p===name);
+  });
+}
+function loading(on){ document.getElementById('loadBar').classList.toggle('show',on); document.getElementById('btnRefresh').textContent=on?'…':'↻ Actualiser'; }
+function showErr(msg){ const el=document.getElementById('errb'); el.textContent=msg?'⚠️ '+msg:''; el.style.display=msg?'block':'none'; }
+function logDI(msg){ S.log.unshift(`[${new Date().toLocaleTimeString('fr-FR')}] ${msg}`); if(S.log.length>20) S.log.pop(); const el=document.getElementById('dilog'); if(el) el.innerHTML=S.log.join('<br>'); }
 function renderDI(){
   const f=document.getElementById('dFrom').value,t=document.getElementById('dTo').value;
   document.getElementById('digrid').innerHTML=[
-    {t:'Statut',v:S.token?'🟢 Connecté':'🔴',s:CFG.dataset},
-    {t:'Hôtels',v:S.allH.length||'–',s:S.selH.size===0?'Tous':S.selH.size+' sélectionnés'},
-    {t:'Période',v:f&&t?`${f} → ${t}`:'–',s:S.period.toUpperCase()},
-    {t:'Dataset',v:CFG.dataset,s:CFG.workspace},
-    {t:'Devise',v:S.curr,s:'Conversion non active'},
-    {t:'Dernière MAJ',v:document.getElementById('lupd').textContent||'–',s:''},
+    {t:'Statut',       v:S.token?'🟢 Connecté':'🔴',               s:CFG.dataset},
+    {t:'Hôtels',       v:S.allH.length||'–',                         s:S.selH.size===0?'Tous':S.selH.size+' sélectionnés'},
+    {t:'Période',      v:f&&t?`${f} → ${t}`:'–',                    s:S.period.toUpperCase()},
+    {t:'Dataset',      v:CFG.dataset,                                 s:CFG.workspace},
+    {t:'Devise',       v:S.curr,                                      s:'Conversion non active'},
+    {t:'Pickup',       v:'J-7',                                       s:'Pickup Room Sold / Revenue / Occ / ADR / RevPAR'},
   ].map(c=>`<div class="dic"><div class="dic-t">${c.t}</div><div class="dic-v">${c.v}</div><div class="dic-s">${c.s}</div></div>`).join('');
 }
 
+/* ══ CONNECT ════════════════════════════════════════════════════════════════ */
 async function connect() {
   loading(true);
   try {
     S.token = await getToken();
-    if (!S.token) return; // loginRedirect en cours
-    const g=await apiG('/groups');
-    const ws=g.value.find(x=>x.name===CFG.workspace);
+    if (!S.token) return;
+    const g  = await apiG('/groups');
+    const ws = g.value.find(x=>x.name===CFG.workspace);
     if (!ws) throw new Error(`Workspace "${CFG.workspace}" introuvable.`);
-    const ds=(await apiG(`/groups/${ws.id}/datasets`)).value.find(x=>x.name===CFG.dataset);
+    const ds = (await apiG(`/groups/${ws.id}/datasets`)).value.find(x=>x.name===CFG.dataset);
     if (!ds) throw new Error(`Dataset "${CFG.dataset}" introuvable.`);
-    S.dsId=ds.id;
+    S.dsId = ds.id;
     logDI('Connecté — '+CFG.workspace);
-    const hr=await dax(`EVALUATE SELECTCOLUMNS(SUMMARIZE(dim_hotel,dim_hotel[${CFG.hotelCol}]),"H",dim_hotel[${CFG.hotelCol}])`);
+    const hr = await dax(`EVALUATE SELECTCOLUMNS(SUMMARIZE(dim_hotel,dim_hotel[${CFG.hotelCol}]),"H",dim_hotel[${CFG.hotelCol}])`);
     buildHL(hr.map(r=>r['[H]']).filter(Boolean).sort());
     logDI(S.allH.length+' hôtels chargés');
-    const y=new Date().getFullYear();
-    document.getElementById('dFrom').value=`${y}-01-01`;
-    document.getElementById('dTo').value=`${y}-12-31`;
+    const y = new Date().getFullYear();
+    document.getElementById('dFrom').value = `${y}-01-01`;
+    document.getElementById('dTo').value   = `${y}-12-31`;
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='flex';
     await loadAll();
   } catch(e) { loading(false); lErr(e.message); S.token=null; S.dsId=null; }
 }
-function lErr(m){const e=document.getElementById('lErr');e.textContent='⚠️ '+m;e.style.display='block';}
+function lErr(m){ const e=document.getElementById('lErr'); e.textContent='⚠️ '+m; e.style.display='block'; }
 
+/* ══ INIT ════════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('connectBtn').addEventListener('click', connect);
-  connect(); // connexion automatique au chargement
+  connect();
 
-  document.getElementById('tab-overview').addEventListener('click',()=>showPage('overview'));
-  document.getElementById('tab-monthly').addEventListener('click',async()=>{showPage('monthly');if(!S.monthLoaded)await loadMonthly();renderMonthlyView();});
-  document.getElementById('tab-segments').addEventListener('click',async()=>{showPage('segments');if(!S.segmentLoaded)await loadSegments();renderSegmentsView();});
-  document.getElementById('tab-integrity').addEventListener('click',()=>{showPage('integrity');renderDI();});
+  document.getElementById('tab-overview').addEventListener('click',  ()=>showPage('overview'));
+  document.getElementById('tab-monthly').addEventListener('click',   async()=>{ showPage('monthly');  if(!S.monthLoaded)  await loadMonthly();  renderMonthlyView();  });
+  document.getElementById('tab-segments').addEventListener('click',  async()=>{ showPage('segments'); if(!S.segmentLoaded) await loadSegments(); renderSegmentsView(); });
+  document.getElementById('tab-integrity').addEventListener('click', ()=>{ showPage('integrity'); renderDI(); });
 
-  ['OTB','Forecast','Budget','LY'].forEach(v=>{
-    document.getElementById('sc-'+v).addEventListener('click',()=>{S.sc=v;['OTB','Forecast','Budget','LY'].forEach(x=>document.getElementById('sc-'+x).classList.toggle('active',x===v));renderTable('htbl',getFilteredHotelRows(),getHotelName,S.sc,S.cp);});
-    document.getElementById('msc-'+v).addEventListener('click',()=>{S.msc=v;['OTB','Forecast','Budget','LY'].forEach(x=>document.getElementById('msc-'+x).classList.toggle('active',x===v));renderMonthlyView();});
-    document.getElementById('ssc-'+v).addEventListener('click',()=>{S.ssc=v;['OTB','Forecast','Budget','LY'].forEach(x=>document.getElementById('ssc-'+x).classList.toggle('active',x===v));renderSegmentsView();});
+  // Boucle sur les 3 vues pour brancher scénario + comparaison
+  const VUES = [
+    {
+      scPfx:'sc-',  cpPfx:'cp-',
+      getSc:()=>S.sc,  getCp:()=>S.cp,
+      setSc:v=>S.sc=v, setCp:v=>S.cp=v,
+      render:()=>renderTable('htbl',getFilteredHotelRows(),getHotelName,S.sc,S.cp),
+    },
+    {
+      scPfx:'msc-', cpPfx:'mcp-',
+      getSc:()=>S.msc, getCp:()=>S.mcp,
+      setSc:v=>S.msc=v, setCp:v=>S.mcp=v,
+      render:()=>renderMonthlyView(),
+    },
+    {
+      scPfx:'ssc-', cpPfx:'scp-',
+      getSc:()=>S.ssc, getCp:()=>S.scp,
+      setSc:v=>S.ssc=v, setCp:v=>S.scp=v,
+      render:()=>renderSegmentsView(),
+    },
+  ];
+
+  VUES.forEach(vue => {
+    ['OTB','Forecast','Budget','LY'].forEach(v => {
+      document.getElementById(vue.scPfx+v).addEventListener('click', ()=>{
+        vue.setSc(v);
+        ['OTB','Forecast','Budget','LY'].forEach(x=>document.getElementById(vue.scPfx+x).classList.toggle('active',x===v));
+        vue.render();
+      });
+    });
+    ['LY','Budget','Forecast','Pickup'].forEach(v => {
+      document.getElementById(vue.cpPfx+v).addEventListener('click', ()=>{
+        vue.setCp(v);
+        ['LY','Budget','Forecast','Pickup'].forEach(x=>document.getElementById(vue.cpPfx+x).classList.toggle('active',x===v));
+        vue.render();
+      });
+    });
   });
-  ['LY','Budget','Forecast'].forEach(v=>{
-    document.getElementById('cp-'+v).addEventListener('click',()=>{S.cp=v;['LY','Budget','Forecast'].forEach(x=>document.getElementById('cp-'+x).classList.toggle('active',x===v));renderTable('htbl',getFilteredHotelRows(),getHotelName,S.sc,S.cp);});
-    document.getElementById('mcp-'+v).addEventListener('click',()=>{S.mcp=v;['LY','Budget','Forecast'].forEach(x=>document.getElementById('mcp-'+x).classList.toggle('active',x===v));renderMonthlyView();});
-    document.getElementById('scp-'+v).addEventListener('click',()=>{S.scp=v;['LY','Budget','Forecast'].forEach(x=>document.getElementById('scp-'+x).classList.toggle('active',x===v));renderSegmentsView();});
-  });
 
-  document.getElementById('pbYTD').addEventListener('click',()=>setPeriod('ytd'));
-  document.getElementById('pbTTM').addEventListener('click',()=>setPeriod('ttm'));
-  document.getElementById('pbCustom').addEventListener('click',()=>setPeriod('custom'));
+  document.getElementById('pbYTD').addEventListener('click',    ()=>setPeriod('ytd'));
+  document.getElementById('pbTTM').addEventListener('click',    ()=>setPeriod('ttm'));
+  document.getElementById('pbCustom').addEventListener('click', ()=>setPeriod('custom'));
 
   let dtimer=null;
-  ['dFrom','dTo'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{clearTimeout(dtimer);dtimer=setTimeout(loadAll,1000);}));
+  ['dFrom','dTo'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{ clearTimeout(dtimer); dtimer=setTimeout(loadAll,1000); }));
 
-  document.getElementById('compSel').addEventListener('change',()=>{S.comp=document.getElementById('compSel').value;renderAll();if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded)renderMonthlyView();});
-  document.getElementById('currSel').addEventListener('change',()=>{S.curr=document.getElementById('currSel').value;renderAll();if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded)renderMonthlyView();});
+  document.getElementById('compSel').addEventListener('change',()=>{
+    S.comp=document.getElementById('compSel').value; renderAll();
+    if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded) renderMonthlyView();
+  });
+  document.getElementById('currSel').addEventListener('change',()=>{
+    S.curr=document.getElementById('currSel').value; renderAll();
+    if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded) renderMonthlyView();
+  });
   document.getElementById('btnRefresh').addEventListener('click',loadAll);
 
   document.getElementById('hotelBtn').addEventListener('click',e=>{e.stopPropagation();document.getElementById('hdd').classList.toggle('open');});
   document.addEventListener('click',e=>{if(!document.getElementById('hwrap').contains(e.target))document.getElementById('hdd').classList.remove('open');});
   document.getElementById('hsrch').addEventListener('input',filterHL);
-  document.getElementById('selAll').addEventListener('click',()=>{S.selH=new Set();renderHL(S.allH);updateHBtn();renderAll();if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded)renderMonthlyView();});
-  document.getElementById('clrAll').addEventListener('click',()=>{S.selH=new Set();document.querySelectorAll('#hdl input').forEach(cb=>{cb.checked=false;});updateHBtn();renderAll();if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded)renderMonthlyView();});
+  document.getElementById('selAll').addEventListener('click',()=>{ S.selH=new Set(); renderHL(S.allH); updateHBtn(); renderAll(); if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded) renderMonthlyView(); });
+  document.getElementById('clrAll').addEventListener('click',()=>{ S.selH=new Set(); document.querySelectorAll('#hdl input').forEach(cb=>{cb.checked=false;}); updateHBtn(); renderAll(); if(document.getElementById('page-monthly').classList.contains('active')&&S.monthLoaded) renderMonthlyView(); });
 });
 </script>
 </body>
